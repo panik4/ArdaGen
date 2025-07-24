@@ -29,9 +29,9 @@ file(GLOB_RECURSE HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/include/*.h ArdaGen/i
 add_library(ArdaGen ${SOURCE_FILES} ${HEADER_FILES})
 
 # Add the LibArdaGen subdirectory first
-add_subdirectory(${CMAKE_SOURCE_DIR}/../LibArdaGen ArdGenLib_build)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../LibArdaGen ArdGenLib_build)
 # Add the LibArdaGen subdirectory first
-add_subdirectory(${CMAKE_SOURCE_DIR}/../FastWorldGenGUI FwgUI_build)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../FastWorldGenGUI FwgUI_build)
 # Query the include directories for LibArdaGen to ensure they are properly set
 get_target_property(inc_dirs ArdaGen INCLUDE_DIRECTORIES)
 
