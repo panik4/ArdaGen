@@ -1,8 +1,8 @@
 #define D_SCL_SECURE_NO_WARNINGS
 #define _SCL_SECURE_NO_WARNINGS
 #pragma warning(disable : 4996)
-#include "FastWorldGenerator.h"
-#include "UI/fwgUI.h"
+#include "generic/ArdaGen.h"
+#include "ArdaUI/ArdaUI.h"
 #include "Utils/Logging.h"
 #include "Utils/Utils.h"
 #include <filesystem>
@@ -82,7 +82,10 @@ int main() {
   }
 
 
-  Fwg::FastWorldGenerator fwg;
-  Fwg::fwgUI ui;
-  ui.shiny(fwg);
+  Arda::ArdaGen ardaGen;
+  // turn it into a shared pointer
+  std::shared_ptr<Arda::ArdaGen> ardG = std::make_shared<Arda::ArdaGen>(ardaGen);
+  
+  Arda::ArdaUI ui;
+  ui.shiny(ardG);
 }
