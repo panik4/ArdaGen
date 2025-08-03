@@ -1,7 +1,7 @@
 #define D_SCL_SECURE_NO_WARNINGS
 #define _SCL_SECURE_NO_WARNINGS
 #pragma warning(disable : 4996)
-#include "generic/ArdaGen.h"
+#include "ArdaGen.h"
 #include "ArdaUI/ArdaUI.h"
 #include "Utils/Logging.h"
 #include "Utils/Utils.h"

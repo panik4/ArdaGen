@@ -1,6 +1,6 @@
 #pragma once
 #include "UI/fwgUI.h"
-#include "generic/ArdaGen.h"
+#include "ArdaGen.h"
 #include <d3d11.h>
 #include <string>
 #include <tchar.h>
