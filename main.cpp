@@ -18,7 +18,7 @@ void dumpInfo(const std::string &error, const std::string &configSubFolder) {
       dump += Fwg::Parsing::readFile(entry.path().string());
     }
   }
-  dump += std::to_string(Fwg::Cfg::Values().seed);
+  dump += std::to_string(Fwg::Cfg::Values().mapSeed);
   dump += "\n";
   for (auto layerSeed : Fwg::Cfg::Values().seeds) {
     dump += std::to_string(layerSeed);

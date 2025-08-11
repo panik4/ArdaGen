@@ -25,10 +25,6 @@
 		"modifyHeight": false,
 		"heightAdjustments": 0
 	},
-	"edit":
-	{
-		"editor" : "mspaint.exe"
-	},
 	"cut":
 	{
 	},

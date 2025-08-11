@@ -165,7 +165,7 @@ int ArdaUI::shiny(std::shared_ptr<Arda::ArdaGen> &ardaGen) {
 }
 
 void ArdaUI::overview(std::shared_ptr<Arda::ArdaGen> &ardaGen, Fwg::Cfg &cfg) {
-  if (ImGui::BeginTabItem("Overview")) {
+  if (UI::Elements::BeginMainTabItem("Overview")) {
     if (uiUtils->tabSwitchEvent()) {
       uiUtils->updateImage(0, Fwg::Gfx::displayWorldCivilisationMap(
                                   ardaGen->climateData, ardaGen->provinceMap,
