@@ -5,7 +5,6 @@ cmake_minimum_required(VERSION 3.15)
 project(ArdaGenUI VERSION 1.0 LANGUAGES CXX)
 
 # Specify the C++ standard
-set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # For Release build (force optimizations)
@@ -19,6 +18,7 @@ if(MSVC)
     add_compile_options(/GL-)  # Disable whole program optimization
     add_compile_options(/Gy)  # Enable function-level linking
 endif()
+add_compile_options(/std:c++latest)
 
 # Core library (LibArdaGen) ------------------------------------
 # Find all core source files (excluding main.cpp) and header files
