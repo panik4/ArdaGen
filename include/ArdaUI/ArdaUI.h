@@ -1,6 +1,6 @@
 #pragma once
-#include "UI/fwgUI.h"
 #include "ArdaGen.h"
+#include "UI/fwgUI.h"
 #include <d3d11.h>
 #include <string>
 #include <tchar.h>
@@ -49,7 +49,6 @@ class ArdaUI : public Fwg::FwgUI {
   };
 
   Fwg::Gfx::Bitmap regionSelectMap;
-  std::shared_ptr<Arda::ArdaGen> ardaGen;
   // configuration
 
   bool showVisualLayerToggles(
@@ -129,9 +128,26 @@ class ArdaUI : public Fwg::FwgUI {
        {VisualLayerType::RELIGIONS, false, 1.0f, "Religions"}},
   };
 
+protected:
+  std::shared_ptr<Arda::ArdaGen> ardaGen;
+  bool configuredScenarioGen = false;
+  LanguageGenerator languageGenerator;
+
 public:
   ArdaUI();
   int shiny(std::shared_ptr<Arda::ArdaGen> &ardaGen);
   void overview(std::shared_ptr<Arda::ArdaGen> &ardaGen, Fwg::Cfg &cfg);
+  bool scenarioGenReady(bool printIssue);
+  void showCivilizationTab(Fwg::Cfg &cfg, Fwg::FastWorldGenerator &fwg);
+  void showDevelopmentTab(Fwg::Cfg &cfg, Fwg::FastWorldGenerator &fwg);
+  void showPopulationTab(Fwg::Cfg &cfg, Fwg::FastWorldGenerator &fwg);
+  void showUrbanisationTab(Fwg::Cfg &cfg, Fwg::FastWorldGenerator &fwg);
+  void showAgricultureTab(Fwg::Cfg &cfg, Fwg::FastWorldGenerator &fwg);
+  void showLocationTab(Fwg::Cfg &cfg, Fwg::FastWorldGenerator &fwg);
+  void showNavmeshTab(Fwg::Cfg &cfg, Fwg::FastWorldGenerator &fwg);
+  void showCultureTab(Fwg::Cfg &cfg);
+  void showReligionTab(Fwg::Cfg &cfg);
+  void showLanguageTab(Fwg::Cfg &cfg);
+
 };
 } // namespace Arda
