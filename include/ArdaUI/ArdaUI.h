@@ -131,23 +131,22 @@ class ArdaUI : public Fwg::FwgUI {
 protected:
   std::shared_ptr<Arda::ArdaGen> ardaGen;
   bool configuredScenarioGen = false;
+  bool resetSelection = false;
   LanguageGenerator languageGenerator;
+  std::shared_ptr<Arda::ArdaRegion> getSelectedRegion();
 
 public:
   ArdaUI();
   int shiny(std::shared_ptr<Arda::ArdaGen> &ardaGen);
-  void overview(std::shared_ptr<Arda::ArdaGen> &ardaGen, Fwg::Cfg &cfg);
+  void overview(Fwg::Cfg &cfg);
   bool scenarioGenReady(bool printIssue);
-  void showCivilizationTab(Fwg::Cfg &cfg, Fwg::FastWorldGenerator &fwg);
-  void showDevelopmentTab(Fwg::Cfg &cfg, Fwg::FastWorldGenerator &fwg);
-  void showPopulationTab(Fwg::Cfg &cfg, Fwg::FastWorldGenerator &fwg);
-  void showUrbanisationTab(Fwg::Cfg &cfg, Fwg::FastWorldGenerator &fwg);
-  void showAgricultureTab(Fwg::Cfg &cfg, Fwg::FastWorldGenerator &fwg);
-  void showLocationTab(Fwg::Cfg &cfg, Fwg::FastWorldGenerator &fwg);
-  void showNavmeshTab(Fwg::Cfg &cfg, Fwg::FastWorldGenerator &fwg);
+  void showCivilizationTab(Fwg::Cfg &cfg);
+  void showDevelopmentTab(Fwg::Cfg &cfg);
+  void showPopulationTab(Fwg::Cfg &cfg);
+  void showLocationTab(Fwg::Cfg &cfg);
+  void showNavmeshTab(Fwg::Cfg &cfg);
   void showCultureTab(Fwg::Cfg &cfg);
   void showReligionTab(Fwg::Cfg &cfg);
   void showLanguageTab(Fwg::Cfg &cfg);
-
 };
 } // namespace Arda
