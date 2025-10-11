@@ -131,6 +131,9 @@ class ArdaUI : public Fwg::FwgUI {
 protected:
   std::shared_ptr<Arda::ArdaGen> ardaGen;
   bool configuredScenarioGen = false;
+  bool redoDevelopment = false;
+  bool redoPopulation = false;
+  bool redoCulture = false;
   bool resetSelection = false;
   LanguageGenerator languageGenerator;
   std::shared_ptr<Arda::ArdaRegion> getSelectedRegion();
@@ -139,6 +142,7 @@ public:
   ArdaUI();
   int shiny(std::shared_ptr<Arda::ArdaGen> &ardaGen);
   void overview(Fwg::Cfg &cfg);
+  void automapAreas();
   bool scenarioGenReady(bool printIssue);
   void showCivilizationTab(Fwg::Cfg &cfg);
   void showDevelopmentTab(Fwg::Cfg &cfg);

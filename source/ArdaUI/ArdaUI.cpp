@@ -164,6 +164,23 @@ int ArdaUI::shiny(std::shared_ptr<Arda::ArdaGen> &ardaGen) {
     return -1;
   }
 }
+
+void ArdaUI::automapAreas() {
+  if (modifiedAreas && !computationRunning) {
+    ardaGen->mapProvinces();
+    ardaGen->mapRegions();
+    ardaGen->mapContinents();
+    modifiedAreas = false;
+    redoDevelopment = true;
+    redoPopulation = true;
+    redoCulture = true;
+    if (ardaGen->ardaProvinces.size() && ardaGen->ardaRegions.size() &&
+        ardaGen->ardaContinents.size()) {
+      configuredScenarioGen = true;
+    }
+  }
+}
+
 bool ArdaUI::scenarioGenReady(bool printIssue) {
   bool ready = true;
 
@@ -218,26 +235,12 @@ bool ArdaUI::scenarioGenReady(bool printIssue) {
     ready = false;
   }
 
-  // if (generator->civLayer.urbanisation.size() != cfg.bitmapSize ||
-  //     generator->civLayer.agriculture.size() != cfg.bitmapSize) {
-  //   if (printIssue)
-  //     Fwg::Utils::Logging::logLine(
-  //         "Civilisation tab data missing or wrong size.");
-  //   ready = false;
-  // }
-
-  // if (!generator->civLayer.agriculture.size() ||
-  //     !generator->locationMap.size()) {
-  //   if (printIssue)
-  //     Fwg::Utils::Logging::logLine("Locations tab data is missing.");
-  //   ready = false;
-  // }
-
   return ready;
 }
 void ArdaUI::showCivilizationTab(Fwg::Cfg &cfg) {
   int retCode = 0;
-  if (UI::Elements::BeginMainTabItem("Civilisation")) {
+  if (UI::Elements::BeginMainTabItem(
+          "Civilisation", redoCulture || redoDevelopment || redoPopulation)) {
     if (uiUtils->tabSwitchEvent()) {
       // force update so sub-selected tabs get updated
       uiUtils->setForceUpdate();
@@ -250,59 +253,12 @@ void ArdaUI::showCivilizationTab(Fwg::Cfg &cfg) {
     if (!scenGenReady) {
       configuredScenarioGen = false;
     }
-    // if (UI::Elements::BeginMainTabItem("Scenario")) {
-    //   if (uiUtils->tabSwitchEvent()) {
-    //     // uiUtils->updateImage(
-    //     //     0, Fwg::Gfx::displayWorldCivilisationMap(
-    //     //            activeGenerator->climateData,
-    //     //            activeGenerator->provinceMap,
-    //     activeGenerator->worldMap,
-    //     //            activeGenerator->civLayer, activeGenerator->regionMap,
-    //     //            ""));
-    //     uiUtils->updateImage(0, Fwg::Gfx::Bitmap());
-    //     uiUtils->updateImage(1, Fwg::Gfx::Bitmap());
-    //     scenGenReady = scenarioGenReady(true);
-    //     // if we detect a change in the previous tabs, we also reset
-    //     // "configuredScenarioGen", to FORCE the user to remap areas
-    //     if (!scenGenReady) {
-    //       configuredScenarioGen = false;
-    //     }
-    //   }
 
     // allow printing why the scenario generation is not ready
     if (scenGenReady) {
-      ImGui::PushStyleColor(ImGuiCol_Button,
-                            ImVec4(0.2f, 0.6f, 0.9f, 1.0f)); // background
-      ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
-                            ImVec4(0.3f, 0.7f, 1.0f, 1.0f)); // hover
-      ImGui::PushStyleColor(ImGuiCol_ButtonActive,
-                            ImVec4(0.1f, 0.4f, 0.8f, 1.0f)); // clicked
-      ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding,
-                          6.0f); // rounded corners
-      ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f); // add border
-      if (ImGui::Button("Remap areas every single time you change something in "
-                        "the previous tabs on the left.",
-                        ImVec2(ImGui::GetContentRegionAvail().x * 0.8f, 50))) {
-        // if (!ardaGen->createPaths()) {
-        //   Fwg::Utils::Logging::logLine("ERROR: Couldn't create paths");
-        //   retCode = -1;
-        // }
-        //  start with the generic stuff in the Scenario Generator
-        //  activeGenerator->wrapup(cfg);
-        ardaGen->mapProvinces();
-        ardaGen->mapRegions();
-        // ardaGen->mapTerrain();
-        ardaGen->mapContinents();
-
-        configuredScenarioGen = true;
-      }
-      ImGui::PopStyleVar(2);
-      ImGui::PopStyleColor(3);
-
       uiUtils->showHelpTextBox("Civilisation");
-      if (ardaGen->areaData.provinces.size() &&
-          ardaGen->areaData.regions.size() &&
-          ardaGen->areaData.continents.size()) {
+      if (ardaGen->ardaProvinces.size() && ardaGen->ardaRegions.size() &&
+          ardaGen->ardaContinents.size()) {
 
         ImGui::PushItemWidth(200.0f);
         ImGui::InputDouble(
@@ -315,8 +271,10 @@ void ArdaUI::showCivilizationTab(Fwg::Cfg &cfg) {
 
         ImGui::InputDouble("<--Pop influence on city size",
                            &cfg.populationInfluence, 0.1);
-        ImGui::InputDouble("<--Urbanisation factor", &cfg.urbanFactor, 0.1);
-        ImGui::InputDouble("<--Agriculture factor", &cfg.agricultureFactor,
+        ImGui::InputDouble("<--Urbanisation factor", &ardaGen->ardaConfig.locationConfig.urbanFactor, 0.1);
+        ImGui::InputDouble(
+            "<--Agriculture factor",
+            &ardaGen->ardaConfig.locationConfig.agricultureFactor,
                            0.05);
         ImGui::PopItemWidth();
         ImGui::SeparatorText("Generate all civ data automatically");
@@ -326,6 +284,9 @@ void ArdaUI::showCivilizationTab(Fwg::Cfg &cfg) {
             // ardaGen->genCivData(cfg);
             ardaGen->genCivilisationData();
             uiUtils->resetTexture();
+            redoDevelopment = false;
+            redoPopulation = false;
+            redoCulture = false;
             return true;
           });
         }
@@ -350,9 +311,8 @@ void ArdaUI::showCivilizationTab(Fwg::Cfg &cfg) {
 }
 
 void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
-  static bool drawingMode = false;
-  if (UI::Elements::BeginSubTabItem("Development")) {
-    if (uiUtils->tabSwitchEvent()) {
+  if (UI::Elements::BeginSubTabItem("Development", redoDevelopment)) {
+    if (uiUtils->tabSwitchEvent(true)) {
       uiUtils->updateImage(
           0, Arda::Gfx::displayDevelopment(ardaGen->ardaProvinces));
       uiUtils->updateImage(1, ardaGen->worldMap);
@@ -369,6 +329,7 @@ void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
         // load development map
         ardaGen->loadDevelopment(cfg, draggedFile);
         uiUtils->resetTexture();
+        redoDevelopment = false;
       }
       ImGui::PushItemWidth(200.0f);
       for (auto &continent : ardaGen->ardaContinents) {
@@ -383,11 +344,34 @@ void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
         computationFutureBool = runAsync([&cfg, this]() {
           ardaGen->genDevelopment(cfg);
           uiUtils->resetTexture();
+          redoDevelopment = false;
           return true;
         });
       }
-      // ImGui::Checkbox("Draw mode", &drawingMode);
+
+      // get the clicked state
+      auto modifiableState = getSelectedRegion();
+      if (modifiableState != nullptr) {
+        ImGui::Text("Selected Continent ID: %d", modifiableState->continentID);
+        auto continent = ardaGen->ardaContinents[modifiableState->continentID];
+        ImGui::Text("Continent Development Modifier, press enter to apply");
+        if (ImGui::InputDouble("Continent Development Modifier",
+                               &continent->developmentModifier, 0.1, 1.0,
+                               "%.3f", ImGuiInputTextFlags_EnterReturnsTrue)) {
+          computationFutureBool = runAsync([&cfg, this]() {
+            cfg.randomDevelopment = false;
+            ardaGen->genDevelopment(cfg);
+            uiUtils->resetTexture();
+            redoDevelopment = false;
+            return true;
+          });
+        }
+      } else {
+        ImGui::Text(
+            "No continent selected, click on a continent to select it.");
+      }
       ImGui::PopItemWidth();
+
       // for drawing. Simpledraw not possible due to per-province edit
       // auto affected = uiUtils->getLatestAffectedPixels();
       // if (affected.size() > 0) {
@@ -436,7 +420,7 @@ void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
 }
 
 void ArdaUI::showPopulationTab(Fwg::Cfg &cfg) {
-  if (UI::Elements::BeginSubTabItem("Population")) {
+  if (UI::Elements::BeginSubTabItem("Population", redoPopulation)) {
     if (uiUtils->tabSwitchEvent()) {
       uiUtils->updateImage(
           0, Arda::Gfx::displayPopulation(ardaGen->ardaProvinces));
@@ -464,6 +448,7 @@ void ArdaUI::showPopulationTab(Fwg::Cfg &cfg) {
         computationFutureBool = runAsync([&cfg, this]() {
           ardaGen->genPopulation(cfg);
           uiUtils->resetTexture();
+          redoPopulation = false;
           return true;
         });
       }
@@ -481,6 +466,7 @@ void ArdaUI::showPopulationTab(Fwg::Cfg &cfg) {
         ardaGen->loadPopulation(
             cfg, Fwg::IO::Reader::readGenericImage(draggedFile, cfg));
         uiUtils->resetTexture();
+        redoPopulation = false;
       }
       // for drawing
       // auto affected = uiUtils->getLatestAffectedPixels();
@@ -506,13 +492,12 @@ void ArdaUI::showPopulationTab(Fwg::Cfg &cfg) {
   }
 }
 void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
-
   if (UI::Elements::BeginSubTabItem("Locations")) {
     if (uiUtils->tabSwitchEvent()) {
-      uiUtils->updateImage(0,
-                           Fwg::Gfx::displayLocations(ardaGen->areaData.regions,
-                                                      ardaGen->worldMap));
-      uiUtils->updateImage(1, ardaGen->regionMap);
+      uiUtils->updateImage(
+          0, Arda::Gfx::displayLocations(ardaGen->areaData.regions,
+                                         ardaGen->worldMap));
+      uiUtils->updateImage(1, Fwg::Gfx::Bitmap());
     }
     ImGui::SliderInt("Amount of separate cities per region",
                      &ardaGen->ardaConfig.locationConfig.citiesPerRegion, 1,
@@ -545,8 +530,8 @@ void ArdaUI::showNavmeshTab(Fwg::Cfg &cfg) {
   if (UI::Elements::BeginSubTabItem("Navmesh")) {
     if (uiUtils->tabSwitchEvent()) {
       uiUtils->updateImage(
-          0, Fwg::Gfx::displayConnections(ardaGen->areaData.regions,
-                                          ardaGen->locationMap));
+          0, Arda::Gfx::displayConnections(ardaGen->areaData.regions,
+                                           ardaGen->locationMap));
       uiUtils->updateImage(1, ardaGen->regionMap);
     }
     if (ardaGen->regionMap.initialised() &&
@@ -618,7 +603,7 @@ bool ShowDatasetPopup(const char *popupLabel,
 }
 
 void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
-  if (UI::Elements::BeginSubTabItem("Culture")) {
+  if (UI::Elements::BeginSubTabItem("Culture", redoCulture)) {
     if (uiUtils->tabSwitchEvent(true)) {
       uiUtils->updateImage(0,
                            Arda::Gfx::displayCultureGroups(ardaGen->civData));
@@ -636,6 +621,7 @@ void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
           ardaGen->genEconomyData();
           ardaGen->genCultureData();
           uiUtils->resetTexture();
+          redoCulture = false;
           return true;
         });
       }
@@ -733,6 +719,7 @@ void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
         triggeredDrag = false;
 
         uiUtils->resetTexture();
+        // TODO Add on loading redoCulture = false;
       }
     }
     ImGui::EndTabItem();
@@ -903,7 +890,7 @@ void ArdaUI::overview(Fwg::Cfg &cfg) {
             break;
 
           case VisualLayerType::LOCATIONS:
-            layers.push_back({Fwg::Gfx::displayLocations(
+            layers.push_back({Arda::Gfx::displayLocations(
                                   ardaGen->areaData.regions, ardaGen->worldMap),
                               info.weight});
             break;
@@ -997,164 +984,4 @@ std::shared_ptr<Arda::ArdaRegion> ArdaUI::getSelectedRegion() {
   return nullptr;
 }
 
-// int ArdaUI::showScenarioTab(Fwg::Cfg &cfg,
-//                          std::shared_ptr<Rpx::GenericModule> activeModule)
-//                          {
-//   int retCode = 0;
-//   if (ImGui::BeginTabItem("Scenario")) {
-//
-//     ImGui::EndTabItem();
-//   }
-//   return retCode;
-// }
-
-// void ArdaUI::countryEdit(std::shared_ptr<Arda::ArdaGen> generator) {
-//   static int selectedStateIndex = 0;
-//   static std::string drawCountryTag;
-//   if (!drawBorders) {
-//     drawCountryTag = "";
-//   }
-//   auto &clickEvents = uiUtils->clickEvents;
-//   if (clickEvents.size()) {
-//     auto pix = clickEvents.front();
-//     clickEvents.pop();
-//     const auto &colour = generator->provinceMap[pix.pixel];
-//     if (generator->areaData.provinceColourMap.find(colour)) {
-//       const auto &prov = generator->areaData.provinceColourMap[colour];
-//       if (prov->regionID < generator->ardaRegions.size()) {
-//         auto &state = generator->ardaRegions[prov->regionID];
-//         selectedStateIndex = state->ID;
-//       }
-//     }
-//   }
-//   if (generator->ardaRegions.size()) {
-//     auto &modifiableState = generator->ardaRegions[selectedStateIndex];
-//
-//     if ((modifiableState->owner &&
-//              generator->countries.find(modifiableState->owner->tag) !=
-//                  generator->countries.end() ||
-//          (drawCountryTag.size()) &&
-//          generator->countries.find(drawCountryTag)
-//          !=
-//                                         generator->countries.end())) {
-//       std::shared_ptr selectedCountry =
-//           modifiableState->owner ? modifiableState->owner
-//                                  : generator->countries.at(drawCountryTag);
-//       if (!drawBorders) {
-//         drawCountryTag = selectedCountry->tag;
-//       }
-//       std::string tempTag = selectedCountry->tag;
-//       static std::string bufferChangedTag = "";
-//
-//       Elements::borderChild("CountryEdit", [&]() {
-//         if (ImGui::InputText("Country tag", &tempTag)) {
-//           bufferChangedTag = tempTag;
-//         }
-//         if (ImGui::Button("update tag")) {
-//           if (bufferChangedTag.size() != 3) {
-//             Fwg::Utils::Logging::logLine("Tag must be 3 characters long");
-//           } else {
-//             std::string &oldTag = selectedCountry->tag;
-//             if (oldTag == bufferChangedTag) {
-//               Fwg::Utils::Logging::logLine("Tag is the same as the old
-//               one");
-//             } else {
-//               generator->countries.erase(oldTag);
-//               selectedCountry->tag = bufferChangedTag;
-//               // add country under different tag
-//               generator->countries.insert(
-//                   {selectedCountry->tag, selectedCountry});
-//               for (auto &region : selectedCountry->ownedRegions) {
-//                 region->owner = selectedCountry;
-//               }
-//             }
-//             requireCountryDetails = true;
-//             generator->visualiseCountries(generator->countryMap);
-//           }
-//         }
-//         ImGui::InputText("Country name", &selectedCountry->name);
-//         ImGui::InputText("Country adjective", &selectedCountry->adjective);
-//         ImVec4 color =
-//             ImVec4(((float)selectedCountry->colour.getRed()) / 255.0f,
-//                    ((float)selectedCountry->colour.getGreen()) / 255.0f,
-//                    ((float)selectedCountry->colour.getBlue()) /
-//                    255.0f, 1.0f);
-//
-//         if (ImGui::ColorEdit3("Country Colour", (float *)&color,
-//                               ImGuiColorEditFlags_NoInputs |
-//                                   ImGuiColorEditFlags_NoLabel |
-//                                   ImGuiColorEditFlags_HDR)) {
-//           selectedCountry->colour = Fwg::Gfx::Colour(
-//               color.x * 255.0, color.y * 255.0, color.z * 255.0);
-//           generator->visualiseCountries(generator->countryMap);
-//           uiUtils->resetTexture();
-//         }
-//       });
-//
-//       if (drawBorders && drawCountryTag.size()) {
-//         if (generator->countries.find(drawCountryTag) !=
-//             generator->countries.end()) {
-//           selectedCountry = generator->countries.at(drawCountryTag);
-//         }
-//         if (selectedCountry != nullptr && !modifiableState->isSea() &&
-//             modifiableState->owner != selectedCountry) {
-//           modifiableState->owner->removeRegion(modifiableState);
-//           modifiableState->owner = selectedCountry;
-//           selectedCountry->addRegion(modifiableState);
-//           requireCountryDetails = true;
-//           generator->visualiseCountries(generator->countryMap,
-//                                         modifiableState->ID);
-//           uiUtils->updateImage(0, generator->countryMap);
-//         }
-//       }
-//     }
-//
-//     Elements::borderChild("StateEdit", [&]() {
-//       if (ImGui::InputText("State name", &modifiableState->name)) {
-//         requireCountryDetails = true;
-//       }
-//       if (modifiableState->owner) {
-//         ImGui::Text("State owner", &modifiableState->owner->tag);
-//       }
-//       if (ImGui::InputInt("Population", &modifiableState->totalPopulation))
-//       {
-//         requireCountryDetails = true;
-//       }
-//     });
-//   }
-// }
-//
-// int ArdaUI::showCountryTab(Fwg::Cfg &cfg) {
-//   if (ImGui::BeginTabItem("Countries")) {
-//     if (uiUtils->tabSwitchEvent(true)) {
-//       uiUtils->updateImage(
-//           0, generator->visualiseCountries(generator->countryMap));
-//       uiUtils->updateImage(1, generator->worldMap);
-//     }
-//
-//     ImGui::Text(
-//         "Use auto generated country map or drop it in. You may also first "
-//         "generate a country map, then edit it in the Maps folder, and then
-//         " "drop it in again.");
-//     ImGui::Text("You can also drag in a list of countries (in a .txt file)
-//     "
-//                 "with the following format: #r;g;b;tag;name;adjective. See
-//                 " "inputs//countryMappings.txt as an example. If no file is
-//                 " "dragged in, this example file is used.");
-//     ImGui::PushItemWidth(300.0f);
-//     uiUtils->showHelpTextBox("Countries");
-//     ImGui::InputInt("Number of countries", &generator->numCountries);
-//     // ImGui::InputText("Path to country list: ",
-//     // &generator->countryMappingPath); ImGui::InputText("Path to state
-//     list:
-//     // ", &generator->regionMappingPath);
-//     ImGui::Checkbox("Draw-borders", &drawBorders);
-//
-//
-//
-//     ImGui::EndTabItem();
-//     ImGui::PopItemWidth();
-//   }
-//   return 0;
-// }
 } // namespace Arda
