@@ -133,7 +133,9 @@ protected:
   bool configuredScenarioGen = false;
   bool redoDevelopment = false;
   bool redoPopulation = false;
+  bool redoTopography = false;
   bool redoCulture = false;
+  bool redoLocations = false;
   bool resetSelection = false;
   LanguageGenerator languageGenerator;
   std::shared_ptr<Arda::ArdaRegion> getSelectedRegion();
@@ -147,6 +149,7 @@ public:
   void showCivilizationTab(Fwg::Cfg &cfg);
   void showDevelopmentTab(Fwg::Cfg &cfg);
   void showPopulationTab(Fwg::Cfg &cfg);
+  void showTopographyTab(Fwg::Cfg &cfg);
   void showLocationTab(Fwg::Cfg &cfg);
   void showNavmeshTab(Fwg::Cfg &cfg);
   void showCultureTab(Fwg::Cfg &cfg);

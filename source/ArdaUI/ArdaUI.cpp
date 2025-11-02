@@ -173,7 +173,9 @@ void ArdaUI::automapAreas() {
     modifiedAreas = false;
     redoDevelopment = true;
     redoPopulation = true;
+    redoTopography = true;
     redoCulture = true;
+    redoLocations = true;
     if (ardaGen->ardaProvinces.size() && ardaGen->ardaRegions.size() &&
         ardaGen->ardaContinents.size()) {
       configuredScenarioGen = true;
@@ -271,27 +273,30 @@ void ArdaUI::showCivilizationTab(Fwg::Cfg &cfg) {
 
         ImGui::InputDouble("<--Pop influence on city size",
                            &cfg.populationInfluence, 0.1);
-        ImGui::InputDouble("<--Urbanisation factor", &ardaGen->ardaConfig.locationConfig.urbanFactor, 0.1);
+        ImGui::InputDouble("<--Urbanisation factor",
+                           &ardaGen->ardaConfig.locationConfig.urbanFactor,
+                           0.1);
         ImGui::InputDouble(
             "<--Agriculture factor",
-            &ardaGen->ardaConfig.locationConfig.agricultureFactor,
-                           0.05);
+            &ardaGen->ardaConfig.locationConfig.agricultureFactor, 0.05);
         ImGui::PopItemWidth();
-        ImGui::SeparatorText("Generate all civ data automatically");
         if (UI::Elements::AutomationStepButton(
                 "Generate all civilisation data automatically")) {
           computationFutureBool = runAsync([&cfg, this]() {
             // ardaGen->genCivData(cfg);
             ardaGen->genCivilisationData();
             uiUtils->resetTexture();
+            redoTopography = false;
             redoDevelopment = false;
             redoPopulation = false;
             redoCulture = false;
+            redoLocations = false;
             return true;
           });
         }
         ImGui::SeparatorText("Manually edit civ data");
         if (UI::Elements::BeginSubTabBar("Civilisation stuff")) {
+          showTopographyTab(cfg);
           showDevelopmentTab(cfg);
           showPopulationTab(cfg);
           showCultureTab(cfg);
@@ -491,8 +496,54 @@ void ArdaUI::showPopulationTab(Fwg::Cfg &cfg) {
     ImGui::EndTabItem();
   }
 }
+
+void ArdaUI::showTopographyTab(Fwg::Cfg &cfg) {
+  if (UI::Elements::BeginSubTabItem("Topography", redoTopography)) {
+    if (uiUtils->tabSwitchEvent()) {
+      uiUtils->updateImage(
+          0, Arda::Gfx::displayPopulation(ardaGen->ardaProvinces));
+      uiUtils->updateImage(1, ardaGen->worldMap);
+    }
+    if (!ardaGen->areaData.provinces.size()) {
+      ImGui::Text("Provinces are missing, make sure there were no errors in "
+                  "the province generation.");
+    } else if (!ardaGen->areaData.regions.size()) {
+      ImGui::Text("Regions are missing, make sure there were no errors in the "
+                  "region generation.");
+    } else {
+      ImGui::PushItemWidth(200.0f);
+
+      if (ImGui::Button("Generate Natural Features")) {
+        computationFutureBool = runAsync([&cfg, this]() {
+          ardaGen->genNaturalFeatures();
+          uiUtils->resetTexture();
+          redoTopography = false;
+          return true;
+        });
+      }
+      ImGui::PopItemWidth();
+
+      ImGui::SeparatorText(
+          "Drag and drop in an image of the correct resolution to set the "
+          "population density. The red channel of the input image will be "
+          "used "
+          "to set population, where bright red means high population, black "
+          "means no population");
+      if (triggeredDrag) {
+        triggeredDrag = false;
+        // load population map
+        ardaGen->loadNaturalFeatures(
+            cfg, Fwg::IO::Reader::readGenericImage(draggedFile, cfg));
+        uiUtils->resetTexture();
+        redoTopography = false;
+      }
+    }
+    ImGui::EndTabItem();
+  }
+}
+
 void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
-  if (UI::Elements::BeginSubTabItem("Locations")) {
+  if (UI::Elements::BeginSubTabItem("Locations", redoLocations)) {
     if (uiUtils->tabSwitchEvent()) {
       uiUtils->updateImage(
           0, Arda::Gfx::displayLocations(ardaGen->areaData.regions,
@@ -511,6 +562,24 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
         computationFutureBool = runAsync([this]() {
           ardaGen->genLocations();
           uiUtils->resetTexture();
+          redoLocations = false;
+          return true;
+        });
+      }
+      if (ImGui::Button("Generate random cities")) {
+        computationFutureBool = runAsync([this]() {
+          ardaGen->genLocations();
+          uiUtils->resetTexture();
+          redoLocations = false;
+          return true;
+        });
+      }
+      if (ImGui::Button("Detect cities from urban terrain")) {
+        computationFutureBool = runAsync([this, &cfg]() {
+          // ardaGen->genLocations();
+          ardaGen->detectCitiesFromUrbanTopography();
+          uiUtils->resetTexture();
+          redoLocations = false;
           return true;
         });
       }
@@ -520,7 +589,7 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
       }
 
     } else {
-      ImGui::Text("Generate regions first.");
+      ImGui::Text("Generate areas first.");
     }
     ImGui::EndTabItem();
   }
