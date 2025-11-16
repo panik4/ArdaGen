@@ -501,8 +501,9 @@ void ArdaUI::showTopographyTab(Fwg::Cfg &cfg) {
   if (UI::Elements::BeginSubTabItem("Topography", redoTopography)) {
     if (uiUtils->tabSwitchEvent()) {
       uiUtils->updateImage(
-          0, Arda::Gfx::displayPopulation(ardaGen->ardaProvinces));
-      uiUtils->updateImage(1, ardaGen->worldMap);
+          0, Arda::Gfx::displayTopography(ardaGen->ardaData.civLayer,
+                                          ardaGen->worldMap));
+      uiUtils->updateImage(1, Fwg::Gfx::Bitmap());
     }
     if (!ardaGen->areaData.provinces.size()) {
       ImGui::Text("Provinces are missing, make sure there were no errors in "
@@ -558,32 +559,81 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
                      1, 10);
 
     if (ardaGen->ardaRegions.size()) {
-      if (ImGui::Button("Generate Locations")) {
+      ImGui::SeparatorText("Location Management");
+
+      if (ImGui::Button("Clear all Locations", ImVec2(-1, 0))) {
         computationFutureBool = runAsync([this]() {
-          ardaGen->genLocations();
+          ardaGen->clearLocations();
           uiUtils->resetTexture();
-          redoLocations = false;
+          redoLocations = true;
           return true;
         });
       }
-      if (ImGui::Button("Generate random cities")) {
+      if (ImGui::Button("Generate all Locations")) {
         computationFutureBool = runAsync([this]() {
           ardaGen->genLocations();
-          uiUtils->resetTexture();
-          redoLocations = false;
-          return true;
-        });
-      }
-      if (ImGui::Button("Detect cities from urban terrain")) {
-        computationFutureBool = runAsync([this, &cfg]() {
-          // ardaGen->genLocations();
-          ardaGen->detectCitiesFromUrbanTopography();
           uiUtils->resetTexture();
           redoLocations = false;
           return true;
         });
       }
 
+      ImGui::Spacing();
+
+      // Organized in a table (2 columns)
+      if (ImGui::BeginTable("LocationGeneration", 2,
+                            ImGuiTableFlags_SizingStretchSame)) {
+
+        // --- GENERATION BUTTONS ---
+        ImGui::TableNextColumn();
+        ImGui::SeparatorText("Generate Random");
+        const std::vector<
+            std::pair<const char *, Fwg::Civilization::LocationType>>
+            genButtons = {
+                {"Generate Cities", Fwg::Civilization::LocationType::City},
+                {"Generate Farms", Fwg::Civilization::LocationType::Farm},
+                {"Generate Ports", Fwg::Civilization::LocationType::Port},
+                {"Generate Mines", Fwg::Civilization::LocationType::Mine},
+                {"Generate Forests", Fwg::Civilization::LocationType::Forest}};
+
+        for (auto &[label, type] : genButtons) {
+          if (ImGui::Button(label, ImVec2(-1, 0))) {
+            computationFutureBool = runAsync([this, type]() {
+              ardaGen->genLocationType(type);
+
+              uiUtils->resetTexture();
+              redoLocations = false;
+              return true;
+            });
+          }
+        }
+
+        // --- DETECTION BUTTONS ---
+        ImGui::TableNextColumn();
+        ImGui::SeparatorText("Detect from Topography");
+        const std::vector<
+            std::pair<const char *, Fwg::Civilization::LocationType>>
+            detectButtons = {
+                {"Detect Cities", Fwg::Civilization::LocationType::City},
+                {"Detect Farms", Fwg::Civilization::LocationType::Forest},
+                {"Detect Ports", Fwg::Civilization::LocationType::Port},
+                {"Detect Mines", Fwg::Civilization::LocationType::Mine},
+                {"Detect Forests", Fwg::Civilization::LocationType::Forest},
+            };
+
+        for (auto &[label, type] : detectButtons) {
+          if (ImGui::Button(label, ImVec2(-1, 0))) {
+            computationFutureBool = runAsync([this, type]() {
+              ardaGen->detectLocationType(type);
+              uiUtils->resetTexture();
+              redoLocations = false;
+              return true;
+            });
+          }
+        }
+
+        ImGui::EndTable();
+      }
       if (triggeredDrag) {
         triggeredDrag = false;
       }
