@@ -356,7 +356,8 @@ void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
 
       // get the clicked state
       auto modifiableState = getSelectedRegion();
-      if (modifiableState != nullptr) {
+      if (modifiableState != nullptr && modifiableState->continentID >= 0 &&
+          modifiableState->continentID < ardaGen->ardaContinents.size()) {
         ImGui::Text("Selected Continent ID: %d", modifiableState->continentID);
         auto continent = ardaGen->ardaContinents[modifiableState->continentID];
         ImGui::Text("Continent Development Modifier, press enter to apply");
@@ -532,7 +533,6 @@ void ArdaUI::showTopographyTab(Fwg::Cfg &cfg) {
           "means no population");
       if (triggeredDrag) {
         triggeredDrag = false;
-        // load population map
         ardaGen->loadNaturalFeatures(
             cfg, Fwg::IO::Reader::readGenericImage(draggedFile, cfg));
         uiUtils->resetTexture();
@@ -549,6 +549,9 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
       uiUtils->updateImage(
           0, Arda::Gfx::displayLocations(ardaGen->areaData.regions,
                                          ardaGen->worldMap));
+      uiUtils->updateImage(
+          0, Arda::Gfx::displayConnections(ardaGen->areaData.regions,
+                                           ardaGen->locationMap));
       uiUtils->updateImage(1, Fwg::Gfx::Bitmap());
     }
     ImGui::SliderInt("Amount of separate cities per region",
@@ -574,6 +577,13 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
           ardaGen->genLocations();
           uiUtils->resetTexture();
           redoLocations = false;
+          return true;
+        });
+      }
+      if (ImGui::Button("Generate Navmesh")) {
+        computationFutureBool = runAsync([this]() {
+          ardaGen->genNavmesh();
+          uiUtils->resetTexture();
           return true;
         });
       }
@@ -615,7 +625,7 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
             std::pair<const char *, Fwg::Civilization::LocationType>>
             detectButtons = {
                 {"Detect Cities", Fwg::Civilization::LocationType::City},
-                {"Detect Farms", Fwg::Civilization::LocationType::Forest},
+                {"Detect Farms", Fwg::Civilization::LocationType::Farm},
                 {"Detect Ports", Fwg::Civilization::LocationType::Port},
                 {"Detect Mines", Fwg::Civilization::LocationType::Mine},
                 {"Detect Forests", Fwg::Civilization::LocationType::Forest},
@@ -635,6 +645,18 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
         ImGui::EndTable();
       }
       if (triggeredDrag) {
+        ardaGen->loadNaturalFeatures(
+            cfg, Fwg::IO::Reader::readGenericImage(draggedFile, cfg));
+        computationFutureBool = runAsync([this]() {
+          ardaGen->detectLocationType(Fwg::Civilization::LocationType::City);
+          ardaGen->detectLocationType(Fwg::Civilization::LocationType::Farm);
+          ardaGen->detectLocationType(Fwg::Civilization::LocationType::Port);
+          ardaGen->detectLocationType(Fwg::Civilization::LocationType::Mine);
+          ardaGen->detectLocationType(Fwg::Civilization::LocationType::Forest);
+          uiUtils->resetTexture();
+          redoLocations = false;
+          return true;
+        });
         triggeredDrag = false;
       }
 
@@ -724,8 +746,8 @@ bool ShowDatasetPopup(const char *popupLabel,
 void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
   if (UI::Elements::BeginSubTabItem("Culture", redoCulture)) {
     if (uiUtils->tabSwitchEvent(true)) {
-      uiUtils->updateImage(0,
-                           Arda::Gfx::displayCultureGroups(ardaGen->civData));
+      uiUtils->updateImage(
+          0, Arda::Gfx::displayCultureGroups(ardaGen->ardaProvinces));
       uiUtils->updateImage(1, Fwg::Gfx::Bitmap());
     }
     if (!ardaGen->areaData.provinces.size()) {
@@ -759,6 +781,7 @@ void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
             ImGui::Text(("Culture group: " + cultureGroup->name).c_str());
             ImGui::Text(("Language: " + language->name).c_str());
             ImGui::Text(("Language group: " + languageGroup->name).c_str());
+
             static std::unordered_set<std::string> activeDatasets;
             if (resetSelection) {
               resetSelection = false;
@@ -848,7 +871,7 @@ void ArdaUI::showReligionTab(Fwg::Cfg &cfg) {
   if (UI::Elements::BeginSubTabItem("Religion")) {
     if (uiUtils->tabSwitchEvent()) {
       uiUtils->updateImage(0,
-                           Arda::Gfx::displayReligions(ardaGen->ardaRegions));
+                           Arda::Gfx::displayReligions(ardaGen->ardaProvinces));
       uiUtils->updateImage(1, Fwg::Gfx::Bitmap());
     }
     if (!ardaGen->areaData.provinces.size()) {
@@ -1030,13 +1053,15 @@ void ArdaUI::overview(Fwg::Cfg &cfg) {
             break;
 
           case VisualLayerType::CULTUREGROUPS:
-            layers.push_back({Arda::Gfx::displayCultureGroups(ardaGen->civData),
-                              info.weight});
+            layers.push_back(
+                {Arda::Gfx::displayCultureGroups(ardaGen->ardaProvinces),
+                 info.weight});
             break;
 
           case VisualLayerType::CULTURES:
-            layers.push_back({Arda::Gfx::displayCultures(ardaGen->ardaRegions),
-                              info.weight});
+            layers.push_back(
+                {Arda::Gfx::displayCultures(ardaGen->ardaProvinces),
+                 info.weight});
             break;
 
           case VisualLayerType::RELIGIONS:
