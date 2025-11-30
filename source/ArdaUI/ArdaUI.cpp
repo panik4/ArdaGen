@@ -336,17 +336,30 @@ void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
         uiUtils->resetTexture();
         redoDevelopment = false;
       }
-      ImGui::PushItemWidth(200.0f);
+      ImGui::PushItemWidth(100.0f);
+      ImGui::SeparatorText("Base development affects the overall level of "
+                           "development on a continent.");
+      ImGui::SeparatorText("It is still dependent on climate and habitability");
       for (auto &continent : ardaGen->ardaContinents) {
-        std::string displayString =
-            "Continent development modifier for continent" +
-            std::to_string(continent->ID);
+        std::string displayString = "Base development modifier for continent " +
+                                    std::to_string(continent->ID);
         ImGui::InputDouble(displayString.c_str(),
                            &continent->developmentModifier);
       }
-      ImGui::Checkbox("Random Development", &cfg.randomDevelopment);
-      if (ImGui::Button("Generate Development")) {
+      if (ImGui::Button("Generate Development with new random base development "
+                        "modifiers.")) {
+        cfg.randomDevelopment = true;
         computationFutureBool = runAsync([&cfg, this]() {
+          ardaGen->genDevelopment(cfg);
+          uiUtils->resetTexture();
+          redoDevelopment = false;
+          return true;
+        });
+      }
+      if (ImGui::Button("Generate Development with current base development "
+                        "modifiers.")) {
+        computationFutureBool = runAsync([&cfg, this]() {
+          cfg.randomDevelopment = false;
           ardaGen->genDevelopment(cfg);
           uiUtils->resetTexture();
           redoDevelopment = false;
@@ -358,9 +371,13 @@ void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
       auto modifiableState = getSelectedRegion();
       if (modifiableState != nullptr && modifiableState->continentID >= 0 &&
           modifiableState->continentID < ardaGen->ardaContinents.size()) {
+        ImGui::SeparatorText(
+            "You may click a continent in the image and then modify the "
+            "base development modifiers");
         ImGui::Text("Selected Continent ID: %d", modifiableState->continentID);
         auto continent = ardaGen->ardaContinents[modifiableState->continentID];
-        ImGui::Text("Continent Development Modifier, press enter to apply");
+        ImGui::Text("Continent Development Modifier, press enter to apply if "
+                    "you manually enter a number.");
         if (ImGui::InputDouble("Continent Development Modifier",
                                &continent->developmentModifier, 0.1, 1.0,
                                "%.3f", ImGuiInputTextFlags_EnterReturnsTrue)) {
@@ -515,7 +532,7 @@ void ArdaUI::showTopographyTab(Fwg::Cfg &cfg) {
     } else {
       ImGui::PushItemWidth(200.0f);
 
-      if (ImGui::Button("Generate Natural Features")) {
+      if (ImGui::Button("Generate Natural Features. Doesn't do much yet.")) {
         computationFutureBool = runAsync([&cfg, this]() {
           ardaGen->genNaturalFeatures();
           uiUtils->resetTexture();
@@ -526,11 +543,11 @@ void ArdaUI::showTopographyTab(Fwg::Cfg &cfg) {
       ImGui::PopItemWidth();
 
       ImGui::SeparatorText(
-          "Drag and drop in an image of the correct resolution to set the "
-          "population density. The red channel of the input image will be "
-          "used "
-          "to set population, where bright red means high population, black "
-          "means no population");
+          "Drag and drop in an image containing: marshes, "
+          "wasteland, cities, farmland, mines, forestry, ports.");
+      ImGui::SeparatorText(
+          "Anything apart "
+          "from marshes and wasteland will be used for location generation.");
       if (triggeredDrag) {
         triggeredDrag = false;
         ardaGen->loadNaturalFeatures(
