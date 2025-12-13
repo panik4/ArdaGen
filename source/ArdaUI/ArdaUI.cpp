@@ -399,7 +399,7 @@ void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
       // auto affected = uiUtils->getLatestAffectedPixels();
       // if (affected.size() > 0) {
       //  for (auto &pix : affected) {
-      //    if (ardaGen->terrainData.landForms[pix.first.pixel].altitude > 0.0)
+      //    if (ardaGen->terrainData.landFormIds[pix.first.pixel].altitude > 0.0)
       //    {
       //      const auto &colour = ardaGen->provinceMap[pix.first.pixel];
       //      if (ardaGen->areaData.provinceColourMap.find(colour)) {
@@ -495,7 +495,7 @@ void ArdaUI::showPopulationTab(Fwg::Cfg &cfg) {
       // auto affected = uiUtils->getLatestAffectedPixels();
       // if (affected.size() > 0) {
       //  for (auto &pix : affected) {
-      //    if (ardaGen->terrainData.landForms[pix.first.pixel].altitude > 0.0)
+      //    if (ardaGen->terrainData.landFormIds[pix.first.pixel].altitude > 0.0)
       //    {
       //      const auto &colour = ardaGen->provinceMap[pix.first.pixel];
       //      if (ardaGen->areaData.provinceColourMap.find(colour)) {
@@ -932,12 +932,12 @@ void ArdaUI::overview(Fwg::Cfg &cfg) {
 
           case VisualLayerType::ELEVATIONTYPES:
             layers.push_back(
-                {Fwg::Gfx::landMap(ardaGen->terrainData), info.weight});
+                {Fwg::Gfx::landMask(ardaGen->terrainData), info.weight});
             break;
 
           case VisualLayerType::TOPOGRAPHY:
             layers.push_back(
-                {Fwg::Gfx::topographyMap(ardaGen->terrainData.landForms),
+                {Fwg::Gfx::topographyMap(ardaGen->terrainData.altitudes),
                  info.weight});
             break;
 
