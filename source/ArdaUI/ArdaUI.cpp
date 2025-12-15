@@ -930,7 +930,7 @@ void ArdaUI::overview(Fwg::Cfg &cfg) {
                               info.weight});
             break;
 
-          case VisualLayerType::ELEVATIONTYPES:
+          case VisualLayerType::LANDFORMS:
             layers.push_back(
                 {Fwg::Gfx::landMask(ardaGen->terrainData), info.weight});
             break;

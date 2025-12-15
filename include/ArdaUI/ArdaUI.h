@@ -9,7 +9,7 @@ namespace Arda {
 class ArdaUI : public Fwg::FwgUI {
   enum class VisualLayerType {
     HEIGHTMAP,
-    ELEVATIONTYPES,
+    LANDFORMS,
     TOPOGRAPHY,
     NORMALMAP,
     INCLINATION,
@@ -65,8 +65,8 @@ class ArdaUI : public Fwg::FwgUI {
   std::map<VisualLayerType, VisualLayerInfo> visualLayerInfos = {
       {VisualLayerType::HEIGHTMAP,
        {VisualLayerType::HEIGHTMAP, false, 1.0f, "Heightmap"}},
-      {VisualLayerType::ELEVATIONTYPES,
-       {VisualLayerType::ELEVATIONTYPES, false, 1.0f, "Elevation Types"}},
+      {VisualLayerType::LANDFORMS,
+       {VisualLayerType::LANDFORMS, false, 1.0f, "Elevation Types"}},
       {VisualLayerType::TOPOGRAPHY,
        {VisualLayerType::TOPOGRAPHY, false, 1.0f, "Topography"}},
       {VisualLayerType::NORMALMAP,
