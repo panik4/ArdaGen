@@ -48,7 +48,7 @@ class ArdaUI : public Fwg::FwgUI {
     bool overlay;
   };
 
-  Fwg::Gfx::Bitmap regionSelectMap;
+  Fwg::Gfx::Image regionSelectMap;
   // configuration
 
   bool showVisualLayerToggles(

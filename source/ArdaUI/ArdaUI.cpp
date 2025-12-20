@@ -521,7 +521,7 @@ void ArdaUI::showTopographyTab(Fwg::Cfg &cfg) {
       uiUtils->updateImage(
           0, Arda::Gfx::displayTopography(ardaGen->ardaData.civLayer,
                                           ardaGen->worldMap));
-      uiUtils->updateImage(1, Fwg::Gfx::Bitmap());
+      uiUtils->updateImage(1, Fwg::Gfx::Image());
     }
     if (!ardaGen->areaData.provinces.size()) {
       ImGui::Text("Provinces are missing, make sure there were no errors in "
@@ -569,7 +569,7 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
       uiUtils->updateImage(
           0, Arda::Gfx::displayConnections(ardaGen->areaData.regions,
                                            ardaGen->locationMap));
-      uiUtils->updateImage(1, Fwg::Gfx::Bitmap());
+      uiUtils->updateImage(1, Fwg::Gfx::Image());
     }
     ImGui::SliderInt("Amount of separate cities per region",
                      &ardaGen->ardaConfig.locationConfig.citiesPerRegion, 1,
@@ -765,7 +765,7 @@ void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
     if (uiUtils->tabSwitchEvent(true)) {
       uiUtils->updateImage(
           0, Arda::Gfx::displayCultureGroups(ardaGen->ardaProvinces));
-      uiUtils->updateImage(1, Fwg::Gfx::Bitmap());
+      uiUtils->updateImage(1, Fwg::Gfx::Image());
     }
     if (!ardaGen->areaData.provinces.size()) {
       ImGui::Text("Provinces are missing, make sure there were no errors in "
@@ -889,7 +889,7 @@ void ArdaUI::showReligionTab(Fwg::Cfg &cfg) {
     if (uiUtils->tabSwitchEvent()) {
       uiUtils->updateImage(0,
                            Arda::Gfx::displayReligions(ardaGen->ardaProvinces));
-      uiUtils->updateImage(1, Fwg::Gfx::Bitmap());
+      uiUtils->updateImage(1, Fwg::Gfx::Image());
     }
     if (!ardaGen->areaData.provinces.size()) {
       ImGui::Text("Provinces are missing, make sure there were no errors in "
@@ -916,11 +916,11 @@ void ArdaUI::overview(Fwg::Cfg &cfg) {
       uiUtils->updateImage(0, Fwg::Gfx::displayWorldCivilisationMap(
                                   ardaGen->climateData, ardaGen->provinceMap,
                                   ardaGen->worldMap, ardaGen->regionMap, ""));
-      uiUtils->updateImage(1, Fwg::Gfx::Bitmap());
+      uiUtils->updateImage(1, Fwg::Gfx::Image());
     }
 
     if (showVisualLayerToggles(visualLayerInfos)) {
-      std::vector<Fwg::Gfx::WeightedBitmap> layers;
+      std::vector<Fwg::Gfx::WeightedImage> layers;
       for (const auto &[type, info] : visualLayerInfos) {
         if (info.toggled) {
           switch (type) {
@@ -1092,7 +1092,7 @@ void ArdaUI::overview(Fwg::Cfg &cfg) {
         }
       }
       uiUtils->updateImage(
-          0, Fwg::Gfx::mergeWeightedBitmaps(cfg.width, cfg.height, layers));
+          0, Fwg::Gfx::mergeWeightedImages(cfg.width, cfg.height, layers));
       // show the layers
     }
 
