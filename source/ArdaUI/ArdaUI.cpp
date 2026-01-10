@@ -241,7 +241,7 @@ bool ArdaUI::scenarioGenReady(bool printIssue) {
 }
 void ArdaUI::showCivilizationTab(Fwg::Cfg &cfg) {
   int retCode = 0;
-  if (UI::Elements::BeginMainTabItem(
+  if (Fwg::UI::Elements::BeginMainTabItem(
           "Civilisation", redoCulture || redoDevelopment || redoPopulation)) {
     if (uiUtils->tabSwitchEvent()) {
       // force update so sub-selected tabs get updated
@@ -280,7 +280,7 @@ void ArdaUI::showCivilizationTab(Fwg::Cfg &cfg) {
             "<--Agriculture factor",
             &ardaGen->ardaConfig.locationConfig.agricultureFactor, 0.05);
         ImGui::PopItemWidth();
-        if (UI::Elements::AutomationStepButton(
+        if (Fwg::UI::Elements::AutomationStepButton(
                 "Generate all civilisation data automatically")) {
           computationFutureBool = runAsync([&cfg, this]() {
             // ardaGen->genCivData(cfg);
@@ -295,14 +295,14 @@ void ArdaUI::showCivilizationTab(Fwg::Cfg &cfg) {
           });
         }
         ImGui::SeparatorText("Manually edit civ data");
-        if (UI::Elements::BeginSubTabBar("Civilisation stuff")) {
+        if (Fwg::UI::Elements::BeginSubTabBar("Civilisation stuff")) {
           showTopographyTab(cfg);
           showDevelopmentTab(cfg);
           showPopulationTab(cfg);
           showCultureTab(cfg);
           showLocationTab(cfg);
 
-          UI::Elements::EndSubTabBar();
+          Fwg::UI::Elements::EndSubTabBar();
         }
       } else {
         ImGui::Text("Generate other maps first");
@@ -316,7 +316,7 @@ void ArdaUI::showCivilizationTab(Fwg::Cfg &cfg) {
 }
 
 void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
-  if (UI::Elements::BeginSubTabItem("Development", redoDevelopment)) {
+  if (Fwg::UI::Elements::BeginSubTabItem("Development", redoDevelopment)) {
     if (uiUtils->tabSwitchEvent(true)) {
       uiUtils->updateImage(
           0, Arda::Gfx::displayDevelopment(ardaGen->ardaProvinces));
@@ -443,7 +443,7 @@ void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
 }
 
 void ArdaUI::showPopulationTab(Fwg::Cfg &cfg) {
-  if (UI::Elements::BeginSubTabItem("Population", redoPopulation)) {
+  if (Fwg::UI::Elements::BeginSubTabItem("Population", redoPopulation)) {
     if (uiUtils->tabSwitchEvent()) {
       uiUtils->updateImage(
           0, Arda::Gfx::displayPopulation(ardaGen->ardaProvinces));
@@ -516,7 +516,7 @@ void ArdaUI::showPopulationTab(Fwg::Cfg &cfg) {
 }
 
 void ArdaUI::showTopographyTab(Fwg::Cfg &cfg) {
-  if (UI::Elements::BeginSubTabItem("Topography", redoTopography)) {
+  if (Fwg::UI::Elements::BeginSubTabItem("Topography", redoTopography)) {
     if (uiUtils->tabSwitchEvent()) {
       uiUtils->updateImage(
           0, Arda::Gfx::displayTopography(ardaGen->ardaData.civLayer,
@@ -561,7 +561,7 @@ void ArdaUI::showTopographyTab(Fwg::Cfg &cfg) {
 }
 
 void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
-  if (UI::Elements::BeginSubTabItem("Locations", redoLocations)) {
+  if (Fwg::UI::Elements::BeginSubTabItem("Locations", redoLocations)) {
     if (uiUtils->tabSwitchEvent()) {
       uiUtils->updateImage(
           0, Arda::Gfx::displayLocations(ardaGen->areaData.regions,
@@ -685,7 +685,7 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
 }
 
 void ArdaUI::showNavmeshTab(Fwg::Cfg &cfg) {
-  if (UI::Elements::BeginSubTabItem("Navmesh")) {
+  if (Fwg::UI::Elements::BeginSubTabItem("Navmesh")) {
     if (uiUtils->tabSwitchEvent()) {
       uiUtils->updateImage(
           0, Arda::Gfx::displayConnections(ardaGen->areaData.regions,
@@ -761,7 +761,7 @@ bool ShowDatasetPopup(const char *popupLabel,
 }
 
 void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
-  if (UI::Elements::BeginSubTabItem("Culture", redoCulture)) {
+  if (Fwg::UI::Elements::BeginSubTabItem("Culture", redoCulture)) {
     if (uiUtils->tabSwitchEvent(true)) {
       uiUtils->updateImage(
           0, Arda::Gfx::displayCultureGroups(ardaGen->ardaProvinces));
@@ -885,7 +885,7 @@ void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
   }
 }
 void ArdaUI::showReligionTab(Fwg::Cfg &cfg) {
-  if (UI::Elements::BeginSubTabItem("Religion")) {
+  if (Fwg::UI::Elements::BeginSubTabItem("Religion")) {
     if (uiUtils->tabSwitchEvent()) {
       uiUtils->updateImage(0,
                            Arda::Gfx::displayReligions(ardaGen->ardaProvinces));
@@ -911,7 +911,7 @@ void ArdaUI::showReligionTab(Fwg::Cfg &cfg) {
 void ArdaUI::showLanguageTab(Fwg::Cfg &cfg) {}
 
 void ArdaUI::overview(Fwg::Cfg &cfg) {
-  if (UI::Elements::BeginMainTabItem("Overview")) {
+  if (Fwg::UI::Elements::BeginMainTabItem("Overview")) {
     if (uiUtils->tabSwitchEvent()) {
       uiUtils->updateImage(0, Fwg::Gfx::displayWorldCivilisationMap(
                                   ardaGen->climateData, ardaGen->provinceMap,
