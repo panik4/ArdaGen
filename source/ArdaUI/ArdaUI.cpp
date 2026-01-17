@@ -599,7 +599,7 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
       }
       if (ImGui::Button("Generate Navmesh")) {
         computationFutureBool = runAsync([this]() {
-          ardaGen->genNavmesh();
+          ardaGen->genNavmesh({});
           uiUtils->resetTexture();
           return true;
         });
@@ -696,7 +696,7 @@ void ArdaUI::showNavmeshTab(Fwg::Cfg &cfg) {
         ardaGen->locationMap.initialised()) {
       if (ImGui::Button("Generate Navmesh")) {
         computationFutureBool = runAsync([this]() {
-          ardaGen->genNavmesh();
+          ardaGen->genNavmesh({});
           uiUtils->resetTexture();
           return true;
         });
