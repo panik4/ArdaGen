@@ -597,13 +597,13 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
           return true;
         });
       }
-      if (ImGui::Button("Generate Navmesh")) {
-        computationFutureBool = runAsync([this]() {
-          ardaGen->genNavmesh({}, {});
-          uiUtils->resetTexture();
-          return true;
-        });
-      }
+      //if (ImGui::Button("Generate Navmesh")) {
+      //  computationFutureBool = runAsync([this]() {
+      //    ardaGen->genNavmesh({}, {});
+      //    uiUtils->resetTexture();
+      //    return true;
+      //  });
+      //}
 
       ImGui::Spacing();
 
@@ -662,19 +662,11 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
         ImGui::EndTable();
       }
       if (triggeredDrag) {
-        ardaGen->loadNaturalFeatures(
-            cfg, Fwg::IO::Reader::readGenericImage(draggedFile, cfg));
-        computationFutureBool = runAsync([this]() {
-          ardaGen->detectLocationType(Fwg::Civilization::LocationType::City);
-          ardaGen->detectLocationType(Fwg::Civilization::LocationType::Farm);
-          ardaGen->detectLocationType(Fwg::Civilization::LocationType::Port);
-          ardaGen->detectLocationType(Fwg::Civilization::LocationType::Mine);
-          ardaGen->detectLocationType(Fwg::Civilization::LocationType::Forest);
-          uiUtils->resetTexture();
-          redoLocations = false;
-          return true;
-        });
         triggeredDrag = false;
+        redoLocations = false;
+        ardaGen->loadLocations(
+            Fwg::IO::Reader::readGenericImage(draggedFile, cfg));
+        uiUtils->resetTexture();
       }
 
     } else {
@@ -694,13 +686,13 @@ void ArdaUI::showNavmeshTab(Fwg::Cfg &cfg) {
     }
     if (ardaGen->regionMap.initialised() &&
         ardaGen->locationMap.initialised()) {
-      if (ImGui::Button("Generate Navmesh")) {
-        computationFutureBool = runAsync([this]() {
-          ardaGen->genNavmesh({}, {});
-          uiUtils->resetTexture();
-          return true;
-        });
-      }
+      //if (ImGui::Button("Generate Navmesh")) {
+      //  computationFutureBool = runAsync([this]() {
+      //    ardaGen->genNavmesh({}, {});
+      //    uiUtils->resetTexture();
+      //    return true;
+      //  });
+      //}
 
       if (triggeredDrag) {
         triggeredDrag = false;
@@ -876,6 +868,7 @@ void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
       }
       if (triggeredDrag) {
         triggeredDrag = false;
+        Fwg::Utils::Logging::logLine("Currently not possible to load cultures");
 
         uiUtils->resetTexture();
         // TODO Add on loading redoCulture = false;
@@ -1129,7 +1122,7 @@ std::shared_ptr<Arda::ArdaRegion> ArdaUI::getSelectedRegion() {
     auto pix = clickEvents.front();
     clickEvents.pop();
     const auto colour = ardaGen->provinceMap[pix.pixel];
-    if (ardaGen->areaData.provinceColourMap.find(colour)) {
+    if (ardaGen->areaData.provinceColourMap.contains(colour)) {
       const auto &prov = ardaGen->areaData.provinceColourMap[colour];
       if (prov->regionID < ardaGen->ardaRegions.size()) {
         auto &state = ardaGen->ardaRegions[prov->regionID];
