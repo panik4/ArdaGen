@@ -1,9 +1,7 @@
 #pragma once
 #include "ArdaGen.h"
-#include "UI/fwgUI.h"
-#include <d3d11.h>
+#include "UI/FwgUI.h"
 #include <string>
-#include <tchar.h>
 #include <vector>
 namespace Arda {
 class ArdaUI : public Fwg::FwgUI {

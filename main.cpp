@@ -3,8 +3,8 @@
 #pragma warning(disable : 4996)
 #include "ArdaGen.h"
 #include "ArdaUI/ArdaUI.h"
-#include "Utils/Logging.h"
-#include "Utils/Utils.h"
+#include "utils/Logging.h"
+#include "utils/Utils.h"
 #include <filesystem>
 
 void dumpInfo(const std::string &error, const std::string &configSubFolder) {

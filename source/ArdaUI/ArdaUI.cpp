@@ -1,43 +1,8 @@
 #include "ArdaUI/ArdaUI.h"
-// Forward declare message handler from imgui_impl_win32.cpp
-extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,
-                                                             UINT msg,
-                                                             WPARAM wParam,
-                                                             LPARAM lParam);
+
 namespace Arda {
 // Data
-static UINT g_ResizeWidth = 0, g_ResizeHeight = 0;
-// Win32 message handler
-// You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if
-// dear imgui wants to use your inputs.
-// - When io.WantCaptureMouse is true, do not dispatch mouse input data to your
-// main application, or clear/overwrite your copy of the mouse data.
-// - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to
-// your main application, or clear/overwrite your copy of the keyboard data.
-// Generally you may always pass all inputs to dear imgui, and hide them from
-// your application based on those two flags.
-// LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
-LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-  if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
-    return true;
 
-  switch (msg) {
-  case WM_SIZE:
-    if (wParam == SIZE_MINIMIZED)
-      return 0;
-    g_ResizeWidth = (UINT)LOWORD(lParam); // Queue resize
-    g_ResizeHeight = (UINT)HIWORD(lParam);
-    return 0;
-  case WM_SYSCOMMAND:
-    if ((wParam & 0xfff0) == SC_KEYMENU) // Disable ALT application menu
-      return 0;
-    break;
-  case WM_DESTROY:
-    ::PostQuitMessage(0);
-    return 0;
-  }
-  return ::DefWindowProcW(hWnd, msg, wParam, lParam);
-}
 // for state/country/strategic region editing
 static bool drawBorders = false;
 
@@ -47,122 +12,116 @@ ArdaUI::ArdaUI()
 
 int ArdaUI::shiny(std::shared_ptr<Arda::ArdaGen> &ardaGen) {
 
-  try {
-    //  Create application window
-    //  ImGui_ImplWin32_EnableDpiAwareness();
-    auto wc = initializeWindowClass();
+  CreateDeviceGL("ArdaGen 0.10.1", 0, 0);
 
-    HWND consoleWindow = GetConsoleWindow();
+  uiUtils->setupImGuiContextAndStyle();
+  ImGui_ImplGlfw_InitForOpenGL(window, true);
+  ImGui_ImplOpenGL3_Init("#version 450");
 
-    ::RegisterClassExW(&wc);
-    HWND hwnd =
-        uiUtils->createAndConfigureWindow(wc, wc.lpszClassName, L"ArdaGen");
-    initializeGraphics(hwnd);
-    initializeImGui(hwnd);
-    auto &io = ImGui::GetIO();
+  glfwSetWindowUserPointer(window, this);
+  glfwSetDropCallback(
+      window, [](GLFWwindow *win, int count, const char **paths) {
+        auto *fwgui = reinterpret_cast<ArdaUI *>(glfwGetWindowUserPointer(win));
+        fwgui->triggeredDrag = (count > 0);
+        fwgui->draggedFile = (count > 0) ? std::string(paths[count - 1]) : "";
+      });
 
-    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-    auto &cfg = Fwg::Cfg::Values();
-    // Main loop
-    bool done = false;
-    //--- prior to main loop:
-    DragAcceptFiles(hwnd, TRUE);
-    uiUtils->primaryTexture = nullptr;
-    uiUtils->device = g_pd3dDevice;
+  auto &cfg = Fwg::Cfg::Values();
+  auto &io = ImGui::GetIO();
+  init(cfg, *ardaGen);
 
-    init(cfg, *ardaGen);
+  while (!glfwWindowShouldClose(window)) {
+    glfwPollEvents();
 
-    while (!done) {
-      try {
-        initDraggingPoll(done);
-        // Start the Dear ImGui frame
-        ImGui_ImplDX11_NewFrame();
-        ImGui_ImplWin32_NewFrame();
-        ImGui::NewFrame();
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+    {
+      ImGui::SetNextWindowPos({0, 0});
+      ImGui::SetNextWindowSize({io.DisplaySize.x, io.DisplaySize.y});
+      ImGui::Begin("ArdaGen");
+
+      ImGui::BeginChild("LeftContent",
+                        ImVec2(ImGui::GetContentRegionAvail().x * 0.4f,
+                               ImGui::GetContentRegionAvail().y * 1.0f),
+                        false);
+      {
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(78, 90, 204, 40));
+        // Create a child window for the left content
+        ImGui::BeginChild("SettingsContent",
+                          ImVec2(ImGui::GetContentRegionAvail().x * 1.0f,
+                                 ImGui::GetContentRegionAvail().y * 0.8f),
+                          false);
         {
-          ImGui::SetNextWindowPos({0, 0});
-          ImGui::SetNextWindowSize({io.DisplaySize.x, io.DisplaySize.y});
-          ImGui::Begin("ArdaGen");
+          ImGui::SeparatorText("Different Steps of the generation, usually go "
+                               "from left to right");
 
-          ImGui::BeginChild("LeftContent",
-                            ImVec2(ImGui::GetContentRegionAvail().x * 0.4f,
-                                   ImGui::GetContentRegionAvail().y * 1.0f),
-                            false);
-          {
-            ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(78, 90, 204, 40));
-            // Create a child window for the left content
-            ImGui::BeginChild("SettingsContent",
-                              ImVec2(ImGui::GetContentRegionAvail().x * 1.0f,
-                                     ImGui::GetContentRegionAvail().y * 0.8f),
-                              false);
-            {
-              ImGui::SeparatorText(
-                  "Different Steps of the generation, usually go "
-                  "from left to right");
-
-              if (ImGui::BeginTabBar("Steps", ImGuiTabBarFlags_None)) {
-                // Disable all inputs if computation is running
-                if (computationRunning) {
-                  ImGui::BeginDisabled();
-                }
-
-                defaultTabs(cfg, *ardaGen);
-                overview(cfg);
-                // showScenarioTab(cfg, ardaGen);
-                // Re-enable inputs if computation is running
-                if (computationRunning && !computationStarted) {
-                  ImGui::EndDisabled();
-                }
-                // Check if the computation is done
-                if (computationRunning &&
-                    computationFutureBool.wait_for(std::chrono::seconds(0)) ==
-                        std::future_status::ready) {
-                  computationRunning = false;
-                  uiUtils->resetTexture();
-                }
-
-                if (computationRunning) {
-                  computationStarted = false;
-                  ImGui::Text("Working, please be patient");
-                } else {
-                  ImGui::Text("Ready!");
-                }
-
-                ImGui::EndTabBar();
-              }
-
-              ImGui::PopStyleColor();
-              ImGui::EndChild();
-              // Draw a frame around the child region
-              ImVec2 childMin = ImGui::GetItemRectMin();
-              ImVec2 childMax = ImGui::GetItemRectMax();
-              ImGui::GetWindowDrawList()->AddRect(childMin, childMax,
-                                                  IM_COL32(100, 90, 180, 255),
-                                                  0.0f, 0, 2.0f);
+          if (ImGui::BeginTabBar("Steps", ImGuiTabBarFlags_None)) {
+            // Disable all inputs if computation is running
+            if (computationRunning) {
+              ImGui::BeginDisabled();
             }
 
-            genericWrapper(cfg, *ardaGen);
-            logWrapper();
+            defaultTabs(cfg, *ardaGen);
+            overview(cfg);
+            // showScenarioTab(cfg, ardaGen);
+            // Re-enable inputs if computation is running
+            if (computationRunning && !computationStarted) {
+              ImGui::EndDisabled();
+            }
+            // Check if the computation is done
+            if (computationRunning &&
+                computationFutureBool.wait_for(std::chrono::seconds(0)) ==
+                    std::future_status::ready) {
+              computationRunning = false;
+              uiUtils->resetTexture();
+            }
+
+            if (computationRunning) {
+              computationStarted = false;
+              ImGui::Text("Working, please be patient");
+            } else {
+              ImGui::Text("Ready!");
+            }
+
+            ImGui::EndTabBar();
           }
-          ImGui::SameLine();
-          imageWrapper(io);
-          ImGui::End();
+
+          ImGui::PopStyleColor();
+          ImGui::EndChild();
+          // Draw a frame around the child region
+          ImVec2 childMin = ImGui::GetItemRectMin();
+          ImVec2 childMax = ImGui::GetItemRectMax();
+          ImGui::GetWindowDrawList()->AddRect(
+              childMin, childMax, IM_COL32(100, 90, 180, 255), 0.0f, 0, 2.0f);
         }
 
-        // Rendering
-        uiUtils->renderImGui(g_pd3dDeviceContext, g_mainRenderTargetView,
-                             clear_color, g_pSwapChain);
-      } catch (std::exception e) {
-        Fwg::Utils::Logging::logLine("Error in ArdaUI main loop: ", e.what());
+        genericWrapper(cfg, *ardaGen);
+        logWrapper();
       }
+      ImGui::SameLine();
+      imageWrapper(io);
+      ImGui::End();
     }
 
-    cleanup(hwnd, wc);
-    return 0;
-  } catch (std::exception e) {
-    Fwg::Utils::Logging::logLine("Error in ArdaUI startup: ", e.what());
-    return -1;
+    // Render
+    ImGui::Render();
+    int display_w, display_h;
+    glfwGetFramebufferSize(window, &display_w, &display_h);
+    glViewport(0, 0, display_w, display_h);
+    glClearColor(0.45f, 0.55f, 0.60f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+    glfwSwapBuffers(window);
   }
+
+  ImGui_ImplOpenGL3_Shutdown();
+  ImGui_ImplGlfw_Shutdown();
+  ImGui::DestroyContext();
+  glfwDestroyWindow(window);
+  glfwTerminate();
+  return 0;
 }
 
 void ArdaUI::automapAreas() {
@@ -399,7 +358,8 @@ void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
       // auto affected = uiUtils->getLatestAffectedPixels();
       // if (affected.size() > 0) {
       //  for (auto &pix : affected) {
-      //    if (ardaGen->terrainData.landFormIds[pix.first.pixel].altitude > 0.0)
+      //    if (ardaGen->terrainData.landFormIds[pix.first.pixel].altitude >
+      //    0.0)
       //    {
       //      const auto &colour = ardaGen->provinceMap[pix.first.pixel];
       //      if (ardaGen->areaData.provinceColourMap.find(colour)) {
@@ -495,7 +455,8 @@ void ArdaUI::showPopulationTab(Fwg::Cfg &cfg) {
       // auto affected = uiUtils->getLatestAffectedPixels();
       // if (affected.size() > 0) {
       //  for (auto &pix : affected) {
-      //    if (ardaGen->terrainData.landFormIds[pix.first.pixel].altitude > 0.0)
+      //    if (ardaGen->terrainData.landFormIds[pix.first.pixel].altitude >
+      //    0.0)
       //    {
       //      const auto &colour = ardaGen->provinceMap[pix.first.pixel];
       //      if (ardaGen->areaData.provinceColourMap.find(colour)) {
@@ -597,13 +558,13 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
           return true;
         });
       }
-      //if (ImGui::Button("Generate Navmesh")) {
-      //  computationFutureBool = runAsync([this]() {
-      //    ardaGen->genNavmesh({}, {});
-      //    uiUtils->resetTexture();
-      //    return true;
-      //  });
-      //}
+      // if (ImGui::Button("Generate Navmesh")) {
+      //   computationFutureBool = runAsync([this]() {
+      //     ardaGen->genNavmesh({}, {});
+      //     uiUtils->resetTexture();
+      //     return true;
+      //   });
+      // }
 
       ImGui::Spacing();
 
@@ -686,13 +647,13 @@ void ArdaUI::showNavmeshTab(Fwg::Cfg &cfg) {
     }
     if (ardaGen->regionMap.initialised() &&
         ardaGen->locationMap.initialised()) {
-      //if (ImGui::Button("Generate Navmesh")) {
-      //  computationFutureBool = runAsync([this]() {
-      //    ardaGen->genNavmesh({}, {});
-      //    uiUtils->resetTexture();
-      //    return true;
-      //  });
-      //}
+      // if (ImGui::Button("Generate Navmesh")) {
+      //   computationFutureBool = runAsync([this]() {
+      //     ardaGen->genNavmesh({}, {});
+      //     uiUtils->resetTexture();
+      //     return true;
+      //   });
+      // }
 
       if (triggeredDrag) {
         triggeredDrag = false;
