@@ -31,6 +31,7 @@ int ArdaUI::shiny(std::shared_ptr<Arda::ArdaGen> &ardaGen) {
   init(cfg, *ardaGen);
 
   while (!glfwWindowShouldClose(window)) {
+    triggeredDrag = false;
     glfwPollEvents();
 
     ImGui_ImplOpenGL3_NewFrame();
