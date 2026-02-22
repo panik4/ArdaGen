@@ -46,7 +46,7 @@ int main() {
     buffer << f.rdbuf();
     Fwg::Parsing::replaceInStringStream(buffer, "\\", "//");
     pt::read_json(buffer, metaConf);
-  } catch (std::exception e) {
+  } catch (std::exception& e) {
     Fwg::Utils::Logging::logLine("Incorrect config \"MetaConf.json\"");
     Fwg::Utils::Logging::logLine("You can try fixing it yourself. Error is: ",
                                  e.what());
@@ -69,7 +69,7 @@ int main() {
     Fwg::Utils::Logging::logLine("Starting the loading of ",
                                  configSubFolder + "FastWorldGenerator.json");
     config.readConfig(configSubFolder);
-  } catch (std::exception e) {
+  } catch (std::exception& e) {
     Fwg::Utils::Logging::logLine(
         "Incorrect config \"FastWorldGenerator.json\"");
     Fwg::Utils::Logging::logLine("You can try fixing it yourself. Error is: ",
