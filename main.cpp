@@ -46,7 +46,7 @@ int main() {
     buffer << f.rdbuf();
     Fwg::Parsing::replaceInStringStream(buffer, "\\", "//");
     pt::read_json(buffer, metaConf);
-  } catch (std::exception& e) {
+  } catch (std::exception &e) {
     Fwg::Utils::Logging::logLine("Incorrect config \"MetaConf.json\"");
     Fwg::Utils::Logging::logLine("You can try fixing it yourself. Error is: ",
                                  e.what());
@@ -59,21 +59,25 @@ int main() {
   std::string username = metaConf.get<std::string>("config.username");
   std::string workingDirectory =
       metaConf.get<std::string>("config.workingDirectory");
+  if (!Fwg::Utils::Paths::validateAndSanitizeWorkingDirectory(
+          workingDirectory)) {
+    return -1;
+  }
   std::string configSubFolder =
       workingDirectory + metaConf.get<std::string>("config.configSubFolder");
 
-    auto &config = Fwg::Cfg::Values();
+  auto &config = Fwg::Cfg::Values();
   config.workingDirectory = workingDirectory;
   // check if we can read the config
   try {
     Fwg::Utils::Logging::logLine("Starting the loading of ",
                                  configSubFolder + "FastWorldGenerator.json");
     config.readConfig(configSubFolder);
-  } catch (std::exception& e) {
+  } catch (std::exception &e) {
     Fwg::Utils::Logging::logLine(
         "Incorrect config \"FastWorldGenerator.json\"");
     Fwg::Utils::Logging::logLine("You can try fixing it yourself. Error is: ",
-                            e.what());
+                                 e.what());
     Fwg::Utils::Logging::logLine(
         "Otherwise try running it through a json validator, e.g. "
         "\"https://jsonlint.com/\" or \"search for json validator\"");
@@ -81,11 +85,11 @@ int main() {
     return -1;
   }
 
-
   Arda::ArdaGen ardaGen;
   // turn it into a shared pointer
-  std::shared_ptr<Arda::ArdaGen> ardG = std::make_shared<Arda::ArdaGen>(ardaGen);
-  
+  std::shared_ptr<Arda::ArdaGen> ardG =
+      std::make_shared<Arda::ArdaGen>(ardaGen);
+
   Arda::ArdaUI ui;
   ui.shiny(ardG);
 }
