@@ -744,11 +744,17 @@ void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
           auto primaryCulture = modifiableState->getPrimaryCulture();
           if (primaryCulture != nullptr) {
             auto cultureGroup = primaryCulture->cultureGroup;
-            auto culture = modifiableState->getPrimaryCulture();
             auto languageGroup = cultureGroup->getLanguageGroup();
-            auto language = culture->language;
+            if (languageGroup == nullptr) {
+              Fwg::Utils::Logging::logLine(
+                  "Language generator not initialized, cannot show culture "
+                  "details.");
+              ImGui::EndTabItem();
+              return;
+            }
+            auto language = primaryCulture->language;
             // show culture group and used dataset
-            ImGui::Text(("Selected culture: " + culture->name).c_str());
+            ImGui::Text(("Selected culture: " + primaryCulture->name).c_str());
             ImGui::Text(("Culture group: " + cultureGroup->name).c_str());
             ImGui::Text(("Language: " + language->name).c_str());
             ImGui::Text(("Language group: " + languageGroup->name).c_str());
@@ -821,7 +827,7 @@ void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
                 datasetsToUse.push_back(ds);
                 auto newLanguageGroup = std::make_shared<LanguageGroup>(
                     languageGenerator.generateLanguageGroup(
-                        cultureGroup->getCultures().size(), datasetsToUse));
+                        cultureGroup->getCultures().size(), datasetsToUse, Fwg::Cfg::Values().mapSeed));
                 cultureGroup->setLanguageGroup(newLanguageGroup);
               }
             }
