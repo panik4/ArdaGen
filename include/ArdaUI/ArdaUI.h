@@ -1,5 +1,6 @@
 #pragma once
 #include "ArdaGen.h"
+#include "ArdaPrerequisiteChecker.h"
 #include "UI/FwgUI.h"
 #include <string>
 #include <vector>
@@ -128,7 +129,6 @@ class ArdaUI : public Fwg::FwgUI {
 
 protected:
   std::shared_ptr<Arda::ArdaGen> ardaGen;
-  bool configuredScenarioGen = false;
   bool redoDevelopment = false;
   bool redoPopulation = false;
   bool redoTopography = false;

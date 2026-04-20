@@ -136,10 +136,6 @@ void ArdaUI::automapAreas() {
     redoTopography = true;
     redoCulture = true;
     redoLocations = true;
-    if (ardaGen->ardaProvinces.size() && ardaGen->ardaRegions.size() &&
-        ardaGen->ardaContinents.size()) {
-      configuredScenarioGen = true;
-    }
   }
 }
 
@@ -208,38 +204,35 @@ void ArdaUI::showCivilizationTab(Fwg::Cfg &cfg) {
       uiUtils->setForceUpdate();
       uiUtils->resetTexture();
     }
-    static bool scenGenReady = false;
-    scenGenReady = scenarioGenReady(false);
-    // if we detect a change in the previous tabs, we also reset
-    // "configuredScenarioGen", to FORCE the user to remap areas
-    if (!scenGenReady) {
-      configuredScenarioGen = false;
-    }
+    uiUtils->showHelpTextBox("Civilisation");
 
-    // allow printing why the scenario generation is not ready
-    if (scenGenReady) {
-      uiUtils->showHelpTextBox("Civilisation");
-      if (ardaGen->ardaProvinces.size() && ardaGen->ardaRegions.size() &&
-          ardaGen->ardaContinents.size()) {
+    ImGui::PushItemWidth(200.0f);
+    ImGui::InputDouble("<--Development influence on population and city size",
+                       &cfg.developmentInfluence, 0.1);
+    ImGui::InputDouble("<--Minimum Development", &cfg.minimumDevelopment, 0.1);
+    ImGui::InputDouble("<--Maximum Development", &cfg.maximumDevelopment, 0.1);
 
-        ImGui::PushItemWidth(200.0f);
-        ImGui::InputDouble(
-            "<--Development influence on population and city size",
-            &cfg.developmentInfluence, 0.1);
-        ImGui::InputDouble("<--Minimum Development", &cfg.minimumDevelopment,
-                           0.1);
-        ImGui::InputDouble("<--Maximum Development", &cfg.maximumDevelopment,
-                           0.1);
-
-        ImGui::InputDouble("<--Pop influence on city size",
-                           &cfg.populationInfluence, 0.1);
-        ImGui::InputDouble("<--Urbanisation factor",
-                           &ardaGen->ardaConfig.locationConfig.urbanFactor,
-                           0.1);
-        ImGui::InputDouble(
-            "<--Agriculture factor",
-            &ardaGen->ardaConfig.locationConfig.agricultureFactor, 0.05);
-        ImGui::PopItemWidth();
+    ImGui::InputDouble("<--Pop influence on city size",
+                       &cfg.populationInfluence, 0.1);
+    ImGui::InputDouble("<--Urbanisation factor",
+                       &ardaGen->ardaConfig.locationConfig.urbanFactor, 0.1);
+    ImGui::InputDouble("<--Agriculture factor",
+                       &ardaGen->ardaConfig.locationConfig.agricultureFactor,
+                       0.05);
+    ImGui::PopItemWidth();
+    // scoping the guard to ensure only the button is disabled, not the whole
+    // tab, so the user can still edit parameters and go through tabs
+    {
+      auto guard = Fwg::UI::PrerequisiteChecker::require(
+          {Fwg::UI::PrerequisiteChecker::climate(ardaGen->climateData),
+           Fwg::UI::PrerequisiteChecker::landforms(ardaGen->terrainData),
+           Fwg::UI::PrerequisiteChecker::habitability(ardaGen->climateData),
+           Fwg::UI::PrerequisiteChecker::superSegments(ardaGen->areaData),
+           Fwg::UI::PrerequisiteChecker::segments(ardaGen->areaData),
+           Fwg::UI::PrerequisiteChecker::provinces(ardaGen->areaData),
+           Fwg::UI::PrerequisiteChecker::regions(ardaGen->areaData),
+           Fwg::UI::PrerequisiteChecker::continents(ardaGen->areaData)});
+      if (guard.ready()) {
         if (Fwg::UI::Elements::AutomationStepButton(
                 "Generate all civilisation data automatically")) {
           computationFutureBool = runAsync([&cfg, this]() {
@@ -254,23 +247,18 @@ void ArdaUI::showCivilizationTab(Fwg::Cfg &cfg) {
             return true;
           });
         }
-        ImGui::SeparatorText("Manually edit civ data");
-        if (Fwg::UI::Elements::BeginSubTabBar("Civilisation stuff")) {
-          showTopographyTab(cfg);
-          showDevelopmentTab(cfg);
-          showPopulationTab(cfg);
-          showCultureTab(cfg);
-          showLocationTab(cfg);
-
-          Fwg::UI::Elements::EndSubTabBar();
-        }
-      } else {
-        ImGui::Text("Generate other maps first");
       }
-    } else {
-      ImGui::Text("Generate required maps in the other tabs first");
     }
+    ImGui::SeparatorText("Manually edit civ data");
+    if (Fwg::UI::Elements::BeginSubTabBar("Civilisation stuff")) {
+      showTopographyTab(cfg);
+      showDevelopmentTab(cfg);
+      showPopulationTab(cfg);
+      showCultureTab(cfg);
+      showLocationTab(cfg);
 
+      Fwg::UI::Elements::EndSubTabBar();
+    }
     ImGui::EndTabItem();
   }
 }
@@ -282,13 +270,16 @@ void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
           0, Arda::Gfx::displayDevelopment(ardaGen->ardaProvinces));
       uiUtils->updateImage(1, ardaGen->worldMap);
     }
-    if (!ardaGen->areaData.provinces.size()) {
-      ImGui::Text("Provinces are missing, make sure there were no errors in "
-                  "the province generation.");
-    } else if (!ardaGen->areaData.regions.size()) {
-      ImGui::Text("Regions are missing, make sure there were no errors in the "
-                  "region generation.");
-    } else {
+    auto guard = Fwg::UI::PrerequisiteChecker::require(
+        {Fwg::UI::PrerequisiteChecker::climate(ardaGen->climateData),
+         Fwg::UI::PrerequisiteChecker::landforms(ardaGen->terrainData),
+         Fwg::UI::PrerequisiteChecker::habitability(ardaGen->climateData),
+         Fwg::UI::PrerequisiteChecker::superSegments(ardaGen->areaData),
+         Fwg::UI::PrerequisiteChecker::segments(ardaGen->areaData),
+         Fwg::UI::PrerequisiteChecker::provinces(ardaGen->areaData),
+         Fwg::UI::PrerequisiteChecker::regions(ardaGen->areaData),
+         Fwg::UI::PrerequisiteChecker::continents(ardaGen->areaData)});
+    if (guard.ready()) {
       if (triggeredDrag) {
         triggeredDrag = false;
         // load development map
@@ -354,50 +345,6 @@ void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
             "No continent selected, click on a continent to select it.");
       }
       ImGui::PopItemWidth();
-
-      // for drawing. Simpledraw not possible due to per-province edit
-      // auto affected = uiUtils->getLatestAffectedPixels();
-      // if (affected.size() > 0) {
-      //  for (auto &pix : affected) {
-      //    if (ardaGen->terrainData.landFormIds[pix.first.pixel].altitude >
-      //    0.0)
-      //    {
-      //      const auto &colour = ardaGen->provinceMap[pix.first.pixel];
-      //      if (ardaGen->areaData.provinceColourMap.find(colour)) {
-      //        const auto &prov = ardaGen->areaData.provinceColourMap[colour];
-      //        // only allow drawing if enabled, otherwise take the click as
-      //        a
-      //        // select of the continent
-      //        if (drawingMode) {
-      //          if (pix.first.type == InteractionType::CLICK) {
-      //            prov->averageDevelopment = pix.second;
-      //          } else if (pix.first.type == InteractionType::RCLICK) {
-      //            prov->averageDevelopment = 0.0;
-      //          }
-      //        } else {
-      //          // sets the development modifier to the brush strength
-      //          if (pix.first.type == InteractionType::CLICK) {
-      //            for (auto &continent : ardaGen->areaData.continents) {
-      //              if (continent.ID == prov->continentID) {
-      //                continent.developmentModifier = pix.second;
-      //              }
-      //            }
-      //          }
-      //        }
-      //      }
-      //    }
-      //  }
-      //  // we had a click event, therefore setting the dev modifier. We want
-      //  to
-      //  // update, but not re-randomize the just changed development
-      //  modifier,
-      //  // so this must mean that we want to turn off random development
-      //  if (!drawingMode) {
-      //    cfg.randomDevelopment = false;
-      //    ardaGen->genDevelopment(cfg);
-      //  }
-      //  uiUtils->resetTexture();
-      //}
     }
     ImGui::EndTabItem();
   }
@@ -410,24 +357,28 @@ void ArdaUI::showPopulationTab(Fwg::Cfg &cfg) {
           0, Arda::Gfx::displayPopulation(ardaGen->ardaProvinces));
       uiUtils->updateImage(1, ardaGen->worldMap);
     }
-    if (!ardaGen->areaData.provinces.size()) {
-      ImGui::Text("Provinces are missing, make sure there were no errors in "
-                  "the province generation.");
-    } else if (!ardaGen->areaData.regions.size()) {
-      ImGui::Text("Regions are missing, make sure there were no errors in the "
-                  "region generation.");
-    } else {
-      ImGui::PushItemWidth(200.0f);
-      if (ImGui::InputDouble("WorldPopulationFactor",
-                             &ardaGen->ardaConfig.worldPopulationFactor, 0.1)) {
-        ardaGen->ardaConfig.calculateTargetWorldPopulation();
-      }
-      ImGui::Text("Target world population: %f Mio",
-                  ardaGen->ardaConfig.targetWorldPopulation / 1000'000.0);
 
-      // display total world population
-      ImGui::Text("Total world population: %f Mio",
-                  ardaGen->ardaStats.totalWorldPopulation / 1000'000.0);
+    ImGui::PushItemWidth(200.0f);
+    if (ImGui::InputDouble("WorldPopulationFactor",
+                           &ardaGen->ardaConfig.worldPopulationFactor, 0.1)) {
+      ardaGen->ardaConfig.calculateTargetWorldPopulation();
+    }
+    ImGui::Text("Target world population: %f Mio",
+                ardaGen->ardaConfig.targetWorldPopulation / 1000'000.0);
+
+    // display total world population
+    ImGui::Text("Total world population: %f Mio",
+                ardaGen->ardaStats.totalWorldPopulation / 1000'000.0);
+    auto guard = Fwg::UI::PrerequisiteChecker::require(
+        {Fwg::UI::PrerequisiteChecker::climate(ardaGen->climateData),
+         Fwg::UI::PrerequisiteChecker::landforms(ardaGen->terrainData),
+         Fwg::UI::PrerequisiteChecker::habitability(ardaGen->climateData),
+         Fwg::UI::PrerequisiteChecker::superSegments(ardaGen->areaData),
+         Fwg::UI::PrerequisiteChecker::segments(ardaGen->areaData),
+         Fwg::UI::PrerequisiteChecker::provinces(ardaGen->areaData),
+         Fwg::UI::PrerequisiteChecker::regions(ardaGen->areaData),
+         Fwg::UI::PrerequisiteChecker::continents(ardaGen->areaData)});
+    if (guard.ready()) {
       if (ImGui::Button("Generate Population")) {
         computationFutureBool = runAsync([&cfg, this]() {
           ardaGen->genPopulation(cfg);
@@ -452,26 +403,6 @@ void ArdaUI::showPopulationTab(Fwg::Cfg &cfg) {
         uiUtils->resetTexture();
         redoPopulation = false;
       }
-      // for drawing
-      // auto affected = uiUtils->getLatestAffectedPixels();
-      // if (affected.size() > 0) {
-      //  for (auto &pix : affected) {
-      //    if (ardaGen->terrainData.landFormIds[pix.first.pixel].altitude >
-      //    0.0)
-      //    {
-      //      const auto &colour = ardaGen->provinceMap[pix.first.pixel];
-      //      if (ardaGen->areaData.provinceColourMap.find(colour)) {
-      //        const auto &prov = ardaGen->areaData.provinceColourMap[colour];
-      //        if (pix.first.type == InteractionType::CLICK) {
-      //          prov->populationDensity = pix.second;
-      //        } else if (pix.first.type == InteractionType::RCLICK) {
-      //          prov->populationDensity = 0.0;
-      //        }
-      //      }
-      //    }
-      //  }
-      //  uiUtils->resetTexture();
-      //}
     }
     ImGui::EndTabItem();
   }
@@ -485,13 +416,16 @@ void ArdaUI::showTopographyTab(Fwg::Cfg &cfg) {
                                           ardaGen->worldMap));
       uiUtils->updateImage(1, Fwg::Gfx::Image());
     }
-    if (!ardaGen->areaData.provinces.size()) {
-      ImGui::Text("Provinces are missing, make sure there were no errors in "
-                  "the province generation.");
-    } else if (!ardaGen->areaData.regions.size()) {
-      ImGui::Text("Regions are missing, make sure there were no errors in the "
-                  "region generation.");
-    } else {
+    auto guard = Fwg::UI::PrerequisiteChecker::require(
+        {Fwg::UI::PrerequisiteChecker::climate(ardaGen->climateData),
+         Fwg::UI::PrerequisiteChecker::landforms(ardaGen->terrainData),
+         Fwg::UI::PrerequisiteChecker::habitability(ardaGen->climateData),
+         Fwg::UI::PrerequisiteChecker::superSegments(ardaGen->areaData),
+         Fwg::UI::PrerequisiteChecker::segments(ardaGen->areaData),
+         Fwg::UI::PrerequisiteChecker::provinces(ardaGen->areaData),
+         Fwg::UI::PrerequisiteChecker::regions(ardaGen->areaData),
+         Fwg::UI::PrerequisiteChecker::continents(ardaGen->areaData)});
+    if (guard.ready()) {
       ImGui::PushItemWidth(200.0f);
 
       if (ImGui::Button("Generate Natural Features. Doesn't do much yet.")) {
@@ -540,9 +474,17 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
                      &ardaGen->ardaConfig.locationConfig.agriculturePerRegion,
                      1, 10);
 
-    if (ardaGen->ardaRegions.size()) {
-      ImGui::SeparatorText("Location Management");
-
+    auto guard = Fwg::UI::PrerequisiteChecker::require(
+        {Fwg::UI::PrerequisiteChecker::climate(ardaGen->climateData),
+         Fwg::UI::PrerequisiteChecker::landforms(ardaGen->terrainData),
+         Fwg::UI::PrerequisiteChecker::habitability(ardaGen->climateData),
+         Fwg::UI::PrerequisiteChecker::superSegments(ardaGen->areaData),
+         Fwg::UI::PrerequisiteChecker::segments(ardaGen->areaData),
+         Fwg::UI::PrerequisiteChecker::provinces(ardaGen->areaData),
+         Fwg::UI::PrerequisiteChecker::regions(ardaGen->areaData),
+         Fwg::UI::PrerequisiteChecker::continents(ardaGen->areaData)});
+    ImGui::SeparatorText("Location Management");
+    if (guard.ready()) {
       if (ImGui::Button("Clear all Locations", ImVec2(-1, 0))) {
         computationFutureBool = runAsync([this]() {
           ardaGen->clearLocations();
@@ -559,17 +501,10 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
           return true;
         });
       }
-      // if (ImGui::Button("Generate Navmesh")) {
-      //   computationFutureBool = runAsync([this]() {
-      //     ardaGen->genNavmesh({}, {});
-      //     uiUtils->resetTexture();
-      //     return true;
-      //   });
-      // }
 
       ImGui::Spacing();
 
-      // Organized in a table (2 columns)
+      // Organized in a table
       if (ImGui::BeginTable("LocationGeneration", 2,
                             ImGuiTableFlags_SizingStretchSame)) {
 
@@ -630,9 +565,6 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
             Fwg::IO::Reader::readGenericImage(draggedFile, cfg));
         uiUtils->resetTexture();
       }
-
-    } else {
-      ImGui::Text("Generate areas first.");
     }
     ImGui::EndTabItem();
   }
@@ -721,13 +653,16 @@ void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
           0, Arda::Gfx::displayCultureGroups(ardaGen->ardaProvinces));
       uiUtils->updateImage(1, Fwg::Gfx::Image());
     }
-    if (!ardaGen->areaData.provinces.size()) {
-      ImGui::Text("Provinces are missing, make sure there were no errors in "
-                  "the province generation.");
-    } else if (!ardaGen->areaData.regions.size()) {
-      ImGui::Text("Regions are missing, make sure there were no errors in the "
-                  "region generation.");
-    } else {
+    auto guard = Fwg::UI::PrerequisiteChecker::require(
+        {Fwg::UI::PrerequisiteChecker::climate(ardaGen->climateData),
+         Fwg::UI::PrerequisiteChecker::landforms(ardaGen->terrainData),
+         Fwg::UI::PrerequisiteChecker::habitability(ardaGen->climateData),
+         Fwg::UI::PrerequisiteChecker::superSegments(ardaGen->areaData),
+         Fwg::UI::PrerequisiteChecker::segments(ardaGen->areaData),
+         Fwg::UI::PrerequisiteChecker::provinces(ardaGen->areaData),
+         Fwg::UI::PrerequisiteChecker::regions(ardaGen->areaData),
+         Fwg::UI::PrerequisiteChecker::continents(ardaGen->areaData)});
+    if (guard.ready()) {
       if (ImGui::Button("Generate Culture Data")) {
         computationFutureBool = runAsync([this]() {
           ardaGen->genEconomyData();
@@ -827,7 +762,8 @@ void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
                 datasetsToUse.push_back(ds);
                 auto newLanguageGroup = std::make_shared<LanguageGroup>(
                     languageGenerator.generateLanguageGroup(
-                        cultureGroup->getCultures().size(), datasetsToUse, Fwg::Cfg::Values().mapSeed));
+                        cultureGroup->getCultures().size(), datasetsToUse,
+                        Fwg::Cfg::Values().mapSeed));
                 cultureGroup->setLanguageGroup(newLanguageGroup);
               }
             }
@@ -852,13 +788,16 @@ void ArdaUI::showReligionTab(Fwg::Cfg &cfg) {
                            Arda::Gfx::displayReligions(ardaGen->ardaProvinces));
       uiUtils->updateImage(1, Fwg::Gfx::Image());
     }
-    if (!ardaGen->areaData.provinces.size()) {
-      ImGui::Text("Provinces are missing, make sure there were no errors in "
-                  "the province generation.");
-    } else if (!ardaGen->areaData.regions.size()) {
-      ImGui::Text("Regions are missing, make sure there were no errors in the "
-                  "region generation.");
-    } else {
+    auto guard = Fwg::UI::PrerequisiteChecker::require(
+        {Fwg::UI::PrerequisiteChecker::climate(ardaGen->climateData),
+         Fwg::UI::PrerequisiteChecker::landforms(ardaGen->terrainData),
+         Fwg::UI::PrerequisiteChecker::habitability(ardaGen->climateData),
+         Fwg::UI::PrerequisiteChecker::superSegments(ardaGen->areaData),
+         Fwg::UI::PrerequisiteChecker::segments(ardaGen->areaData),
+         Fwg::UI::PrerequisiteChecker::provinces(ardaGen->areaData),
+         Fwg::UI::PrerequisiteChecker::regions(ardaGen->areaData),
+         Fwg::UI::PrerequisiteChecker::continents(ardaGen->areaData)});
+    if (guard.ready()) {
 
       if (triggeredDrag) {
         triggeredDrag = false;
