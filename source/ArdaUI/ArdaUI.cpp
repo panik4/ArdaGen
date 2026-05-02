@@ -195,6 +195,7 @@ bool ArdaUI::scenarioGenReady(bool printIssue) {
 
   return ready;
 }
+
 void ArdaUI::showCivilizationTab(Fwg::Cfg &cfg) {
   int retCode = 0;
   if (Fwg::UI::Elements::BeginMainTabItem(
@@ -206,20 +207,29 @@ void ArdaUI::showCivilizationTab(Fwg::Cfg &cfg) {
     }
     uiUtils->showHelpTextBox("Civilisation");
 
-    ImGui::PushItemWidth(200.0f);
-    ImGui::InputDouble("<--Development influence on population and city size",
-                       &cfg.developmentInfluence, 0.1);
-    ImGui::InputDouble("<--Minimum Development", &cfg.minimumDevelopment, 0.1);
-    ImGui::InputDouble("<--Maximum Development", &cfg.maximumDevelopment, 0.1);
+    ImGui::SeparatorText("Civilisation Parameters");
 
-    ImGui::InputDouble("<--Pop influence on city size",
-                       &cfg.populationInfluence, 0.1);
-    ImGui::InputDouble("<--Urbanisation factor",
-                       &ardaGen->ardaConfig.locationConfig.urbanFactor, 0.1);
-    ImGui::InputDouble("<--Agriculture factor",
-                       &ardaGen->ardaConfig.locationConfig.agricultureFactor,
-                       0.05);
-    ImGui::PopItemWidth();
+    {
+      Fwg::UI::Elements::GridLayout grid(2, 250.0f, 12.0f);
+
+      grid.AddInputDouble("Development Influence", &cfg.developmentInfluence,
+                          0.0, 10.0);
+      grid.AddInputDouble("Min Development", &cfg.minimumDevelopment, 0.0,
+                          10.0);
+      grid.AddInputDouble("Max Development", &cfg.maximumDevelopment, 0.0,
+                          10.0);
+      grid.AddInputDouble("Population Influence", &cfg.populationInfluence, 0.0,
+                          10.0);
+      grid.AddInputDouble("Urban Factor",
+                          &ardaGen->ardaConfig.locationConfig.urbanFactor, 0.0,
+                          10.0);
+      grid.AddInputDouble("Agriculture Factor",
+                          &ardaGen->ardaConfig.locationConfig.agricultureFactor,
+                          0.0, 10.0);
+    }
+
+    ImGui::Spacing();
+
     // scoping the guard to ensure only the button is disabled, not the whole
     // tab, so the user can still edit parameters and go through tabs
     {
@@ -236,7 +246,6 @@ void ArdaUI::showCivilizationTab(Fwg::Cfg &cfg) {
         if (Fwg::UI::Elements::AutomationStepButton(
                 "Generate all civilisation data automatically")) {
           computationFutureBool = runAsync([&cfg, this]() {
-            // ardaGen->genCivData(cfg);
             ardaGen->genCivilisationData();
             uiUtils->resetTexture();
             redoTopography = false;
@@ -249,7 +258,10 @@ void ArdaUI::showCivilizationTab(Fwg::Cfg &cfg) {
         }
       }
     }
+
+    ImGui::Spacing();
     ImGui::SeparatorText("Manually edit civ data");
+
     if (Fwg::UI::Elements::BeginSubTabBar("Civilisation stuff")) {
       showTopographyTab(cfg);
       showDevelopmentTab(cfg);
@@ -282,23 +294,30 @@ void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
     if (guard.ready()) {
       if (triggeredDrag) {
         triggeredDrag = false;
-        // load development map
         ardaGen->loadDevelopment(cfg, draggedFile);
         uiUtils->resetTexture();
         redoDevelopment = false;
       }
-      ImGui::PushItemWidth(100.0f);
-      ImGui::SeparatorText("Base development affects the overall level of "
-                           "development on a continent.");
-      ImGui::SeparatorText("It is still dependent on climate and habitability");
-      for (auto &continent : ardaGen->ardaContinents) {
-        std::string displayString = "Base development modifier for continent " +
-                                    std::to_string(continent->ID);
-        ImGui::InputDouble(displayString.c_str(),
-                           &continent->developmentModifier);
+
+      ImGui::SeparatorText("Continent Development Modifiers");
+      ImGui::TextWrapped("Base development affects the overall level of "
+                         "development on a continent. It is still dependent on "
+                         "climate and habitability.");
+
+      {
+        Fwg::UI::Elements::GridLayout grid(2, 250.0f, 12.0f);
+
+        for (auto &continent : ardaGen->ardaContinents) {
+          std::string label = "Continent " + std::to_string(continent->ID);
+          grid.AddInputDouble(label.c_str(), &continent->developmentModifier,
+                              0.0, 10.0);
+        }
       }
-      if (ImGui::Button("Generate Development with new random base development "
-                        "modifiers.")) {
+
+      ImGui::Spacing();
+
+      if (Fwg::UI::Elements::Button("Generate with Random Modifiers", false,
+                                    ImVec2(250, 0))) {
         cfg.randomDevelopment = true;
         computationFutureBool = runAsync([&cfg, this]() {
           ardaGen->genDevelopment(cfg);
@@ -307,8 +326,11 @@ void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
           return true;
         });
       }
-      if (ImGui::Button("Generate Development with current base development "
-                        "modifiers.")) {
+
+      ImGui::SameLine();
+
+      if (Fwg::UI::Elements::ImportantStepButton(
+              "Generate with Current Modifiers", ImVec2(250, 0))) {
         computationFutureBool = runAsync([&cfg, this]() {
           cfg.randomDevelopment = false;
           ardaGen->genDevelopment(cfg);
@@ -318,33 +340,40 @@ void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
         });
       }
 
+      ImGui::Spacing();
+      ImGui::SeparatorText("Edit Selected Continent");
+
       // get the clicked state
       auto modifiableState = getSelectedRegion();
       if (modifiableState != nullptr && modifiableState->continentID >= 0 &&
           modifiableState->continentID < ardaGen->ardaContinents.size()) {
-        ImGui::SeparatorText(
-            "You may click a continent in the image and then modify the "
-            "base development modifiers");
-        ImGui::Text("Selected Continent ID: %d", modifiableState->continentID);
+        ImGui::TextWrapped("Click a continent in the image and then modify the "
+                           "base development modifiers.");
+
         auto continent = ardaGen->ardaContinents[modifiableState->continentID];
-        ImGui::Text("Continent Development Modifier, press enter to apply if "
-                    "you manually enter a number.");
-        if (ImGui::InputDouble("Continent Development Modifier",
-                               &continent->developmentModifier, 0.1, 1.0,
-                               "%.3f", ImGuiInputTextFlags_EnterReturnsTrue)) {
-          computationFutureBool = runAsync([&cfg, this]() {
-            cfg.randomDevelopment = false;
-            ardaGen->genDevelopment(cfg);
-            uiUtils->resetTexture();
-            redoDevelopment = false;
-            return true;
-          });
+
+        {
+          Fwg::UI::Elements::GridLayout grid(2, 250.0f, 12.0f);
+
+          grid.AddText("Selected Continent", "%d",
+                       modifiableState->continentID);
+
+          if (grid.AddInputDouble("Development Modifier",
+                                  &continent->developmentModifier, 0.0, 10.0)) {
+            computationFutureBool = runAsync([&cfg, this]() {
+              cfg.randomDevelopment = false;
+              ardaGen->genDevelopment(cfg);
+              uiUtils->resetTexture();
+              redoDevelopment = false;
+              return true;
+            });
+          }
         }
       } else {
-        ImGui::Text(
-            "No continent selected, click on a continent to select it.");
+        ImGui::TextColored(
+            ImVec4(0.8f, 0.8f, 0.2f, 1.0f),
+            "No continent selected. Click on a continent to select it.");
       }
-      ImGui::PopItemWidth();
     }
     ImGui::EndTabItem();
   }
@@ -358,17 +387,26 @@ void ArdaUI::showPopulationTab(Fwg::Cfg &cfg) {
       uiUtils->updateImage(1, ardaGen->worldMap);
     }
 
-    ImGui::PushItemWidth(200.0f);
-    if (ImGui::InputDouble("WorldPopulationFactor",
-                           &ardaGen->ardaConfig.worldPopulationFactor, 0.1)) {
-      ardaGen->ardaConfig.calculateTargetWorldPopulation();
-    }
-    ImGui::Text("Target world population: %f Mio",
-                ardaGen->ardaConfig.targetWorldPopulation / 1000'000.0);
+    ImGui::SeparatorText("Population Configuration");
 
-    // display total world population
-    ImGui::Text("Total world population: %f Mio",
-                ardaGen->ardaStats.totalWorldPopulation / 1000'000.0);
+    {
+      Fwg::UI::Elements::GridLayout grid(2, 250.0f, 12.0f);
+
+      if (grid.AddInputDouble("World Population Factor",
+                              &ardaGen->ardaConfig.worldPopulationFactor, 0.0,
+                              10.0)) {
+        ardaGen->ardaConfig.calculateTargetWorldPopulation();
+      }
+
+      grid.AddText("Target Population", "%.1f Mio",
+                   ardaGen->ardaConfig.targetWorldPopulation / 1000'000.0);
+
+      grid.AddText("Current Population", "%.1f Mio",
+                   ardaGen->ardaStats.totalWorldPopulation / 1000'000.0);
+    }
+
+    ImGui::Spacing();
+
     auto guard = Fwg::UI::PrerequisiteChecker::require(
         {Fwg::UI::PrerequisiteChecker::climate(ardaGen->climateData),
          Fwg::UI::PrerequisiteChecker::landforms(ardaGen->terrainData),
@@ -379,7 +417,8 @@ void ArdaUI::showPopulationTab(Fwg::Cfg &cfg) {
          Fwg::UI::PrerequisiteChecker::regions(ardaGen->areaData),
          Fwg::UI::PrerequisiteChecker::continents(ardaGen->areaData)});
     if (guard.ready()) {
-      if (ImGui::Button("Generate Population")) {
+      if (Fwg::UI::Elements::ImportantStepButton("Generate Population",
+                                                 ImVec2(220, 0))) {
         computationFutureBool = runAsync([&cfg, this]() {
           ardaGen->genPopulation(cfg);
           uiUtils->resetTexture();
@@ -387,17 +426,16 @@ void ArdaUI::showPopulationTab(Fwg::Cfg &cfg) {
           return true;
         });
       }
-      ImGui::PopItemWidth();
 
-      ImGui::SeparatorText(
-          "Drag and drop in an image of the correct resolution to set the "
-          "population density. The red channel of the input image will be "
-          "used "
-          "to set population, where bright red means high population, black "
-          "means no population");
+      ImGui::Spacing();
+      ImGui::SeparatorText("Load Custom Population");
+      ImGui::TextWrapped(
+          "Drag and drop an image of the correct resolution to set "
+          "population density. The red channel will be used where "
+          "bright red = high population, black = no population.");
+
       if (triggeredDrag) {
         triggeredDrag = false;
-        // load population map
         ardaGen->loadPopulation(
             cfg, Fwg::IO::Reader::readGenericImage(draggedFile, cfg));
         uiUtils->resetTexture();
@@ -426,9 +464,10 @@ void ArdaUI::showTopographyTab(Fwg::Cfg &cfg) {
          Fwg::UI::PrerequisiteChecker::regions(ardaGen->areaData),
          Fwg::UI::PrerequisiteChecker::continents(ardaGen->areaData)});
     if (guard.ready()) {
-      ImGui::PushItemWidth(200.0f);
+      ImGui::SeparatorText("Natural Features Generation");
 
-      if (ImGui::Button("Generate Natural Features. Doesn't do much yet.")) {
+      if (Fwg::UI::Elements::ImportantStepButton("Generate Natural Features",
+                                                 ImVec2(220, 0))) {
         computationFutureBool = runAsync([&cfg, this]() {
           ardaGen->genNaturalFeatures();
           uiUtils->resetTexture();
@@ -436,14 +475,16 @@ void ArdaUI::showTopographyTab(Fwg::Cfg &cfg) {
           return true;
         });
       }
-      ImGui::PopItemWidth();
 
-      ImGui::SeparatorText(
-          "Drag and drop in an image containing: marshes, "
-          "wasteland, cities, farmland, mines, forestry, ports.");
-      ImGui::SeparatorText(
-          "Anything apart "
-          "from marshes and wasteland will be used for location generation.");
+      ImGui::Spacing();
+      ImGui::SeparatorText("Load Custom Topography");
+      ImGui::TextWrapped(
+          "Drag and drop an image containing: marshes, wasteland, "
+          "cities, farmland, mines, forestry, ports.");
+      ImGui::TextWrapped(
+          "Anything apart from marshes and wasteland will be used "
+          "for location generation.");
+
       if (triggeredDrag) {
         triggeredDrag = false;
         ardaGen->loadNaturalFeatures(
@@ -467,12 +508,21 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
                                            ardaGen->locationMap));
       uiUtils->updateImage(1, Fwg::Gfx::Image());
     }
-    ImGui::SliderInt("Amount of separate cities per region",
-                     &ardaGen->ardaConfig.locationConfig.citiesPerRegion, 1,
-                     10);
-    ImGui::SliderInt("Amount of separate farm areas per region",
-                     &ardaGen->ardaConfig.locationConfig.agriculturePerRegion,
-                     1, 10);
+
+    ImGui::SeparatorText("Location Configuration");
+
+    {
+      Fwg::UI::Elements::GridLayout grid(2, 250.0f, 12.0f);
+
+      grid.AddSliderInt("Cities Per Region",
+                        &ardaGen->ardaConfig.locationConfig.citiesPerRegion, 1,
+                        10);
+      grid.AddSliderInt(
+          "Agriculture Per Region",
+          &ardaGen->ardaConfig.locationConfig.agriculturePerRegion, 1, 10);
+    }
+
+    ImGui::Spacing();
 
     auto guard = Fwg::UI::PrerequisiteChecker::require(
         {Fwg::UI::PrerequisiteChecker::climate(ardaGen->climateData),
@@ -483,9 +533,12 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
          Fwg::UI::PrerequisiteChecker::provinces(ardaGen->areaData),
          Fwg::UI::PrerequisiteChecker::regions(ardaGen->areaData),
          Fwg::UI::PrerequisiteChecker::continents(ardaGen->areaData)});
+
     ImGui::SeparatorText("Location Management");
+
     if (guard.ready()) {
-      if (ImGui::Button("Clear all Locations", ImVec2(-1, 0))) {
+      if (Fwg::UI::Elements::Button("Clear All Locations", false,
+                                    ImVec2(200, 0))) {
         computationFutureBool = runAsync([this]() {
           ardaGen->clearLocations();
           uiUtils->resetTexture();
@@ -493,7 +546,11 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
           return true;
         });
       }
-      if (ImGui::Button("Generate all Locations")) {
+
+      ImGui::SameLine();
+
+      if (Fwg::UI::Elements::ImportantStepButton("Generate All Locations",
+                                                 ImVec2(200, 0))) {
         computationFutureBool = runAsync([this]() {
           ardaGen->genLocations();
           uiUtils->resetTexture();
@@ -524,7 +581,6 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
           if (ImGui::Button(label, ImVec2(-1, 0))) {
             computationFutureBool = runAsync([this, type]() {
               ardaGen->genLocationType(type);
-
               uiUtils->resetTexture();
               redoLocations = false;
               return true;
@@ -558,6 +614,10 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
 
         ImGui::EndTable();
       }
+
+      ImGui::Spacing();
+      ImGui::SeparatorText("Load Custom Locations");
+
       if (triggeredDrag) {
         triggeredDrag = false;
         redoLocations = false;
@@ -578,6 +638,9 @@ void ArdaUI::showNavmeshTab(Fwg::Cfg &cfg) {
                                            ardaGen->locationMap));
       uiUtils->updateImage(1, ardaGen->regionMap);
     }
+
+    ImGui::SeparatorText("Navmesh Generation");
+
     if (ardaGen->regionMap.initialised() &&
         ardaGen->locationMap.initialised()) {
       // if (ImGui::Button("Generate Navmesh")) {
@@ -592,7 +655,8 @@ void ArdaUI::showNavmeshTab(Fwg::Cfg &cfg) {
         triggeredDrag = false;
       }
     } else {
-      ImGui::Text("Generate other maps first");
+      ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.2f, 1.0f),
+                         "Generate other maps first");
     }
     ImGui::EndTabItem();
   }
@@ -663,7 +727,8 @@ void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
          Fwg::UI::PrerequisiteChecker::regions(ardaGen->areaData),
          Fwg::UI::PrerequisiteChecker::continents(ardaGen->areaData)});
     if (guard.ready()) {
-      if (ImGui::Button("Generate Culture Data")) {
+      if (Fwg::UI::Elements::ImportantStepButton("Generate Culture Data",
+                                                 ImVec2(220, 0))) {
         computationFutureBool = runAsync([this]() {
           ardaGen->genEconomyData();
           ardaGen->genCultureData();
@@ -673,6 +738,9 @@ void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
         });
       }
 
+      ImGui::Spacing();
+      ImGui::SeparatorText("Selected Culture Details");
+
       if (ardaGen->ardaRegions.size()) {
         auto modifiableState = getSelectedRegion();
         if (modifiableState != nullptr && modifiableState->isLand()) {
@@ -681,18 +749,24 @@ void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
             auto cultureGroup = primaryCulture->cultureGroup;
             auto languageGroup = cultureGroup->getLanguageGroup();
             if (languageGroup == nullptr) {
-              Fwg::Utils::Logging::logLine(
-                  "Language generator not initialized, cannot show culture "
-                  "details.");
+              ImGui::TextColored(ImVec4(0.8f, 0.2f, 0.2f, 1.0f),
+                                 "Language generator not initialized");
               ImGui::EndTabItem();
               return;
             }
             auto language = primaryCulture->language;
-            // show culture group and used dataset
-            ImGui::Text(("Selected culture: " + primaryCulture->name).c_str());
-            ImGui::Text(("Culture group: " + cultureGroup->name).c_str());
-            ImGui::Text(("Language: " + language->name).c_str());
-            ImGui::Text(("Language group: " + languageGroup->name).c_str());
+
+            // Culture info grid
+            {
+              Fwg::UI::Elements::GridLayout grid(2, 180.0f, 12.0f);
+
+              grid.AddText("Culture", "%s", primaryCulture->name.c_str());
+              grid.AddText("Culture Group", "%s", cultureGroup->name.c_str());
+              grid.AddText("Language", "%s", language->name.c_str());
+              grid.AddText("Language Group", "%s", languageGroup->name.c_str());
+            }
+
+            ImGui::Spacing();
 
             static std::unordered_set<std::string> activeDatasets;
             if (resetSelection) {
@@ -702,16 +776,19 @@ void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
                 activeDatasets.insert(ds);
               }
             }
-            // Open on button click
-            if (ImGui::Button("Edit Language")) {
+
+            if (Fwg::UI::Elements::Button("Edit Language", false,
+                                          ImVec2(150, 0))) {
               ImGui::OpenPopup("DatasetPopup");
             }
-            // generate a few random words to show in a table of different
-            // categories: City names, male names, female names, surnames
+
+            ImGui::Spacing();
+            ImGui::SeparatorText("Example Names");
+
+            // generate a few random words to show in a table
             if (ImGui::BeginTable("ExampleNames", 5,
                                   ImGuiTableFlags_Borders |
                                       ImGuiTableFlags_RowBg)) {
-              // Set up column headers
               ImGui::TableSetupColumn("City Names");
               ImGui::TableSetupColumn("Male Names");
               ImGui::TableSetupColumn("Female Names");
@@ -719,33 +796,27 @@ void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
               ImGui::TableSetupColumn("Other Names");
               ImGui::TableHeadersRow();
 
-              // Number of rows to display (10)
               constexpr int rows = 10;
 
               for (int i = 0; i < rows; i++) {
                 ImGui::TableNextRow();
 
-                // City names
                 ImGui::TableSetColumnIndex(0);
                 if (i < language->cityNames.size())
                   ImGui::TextUnformatted(language->cityNames[i].c_str());
 
-                // Male names
                 ImGui::TableSetColumnIndex(1);
                 if (i < language->maleNames.size())
                   ImGui::TextUnformatted(language->maleNames[i].c_str());
 
-                // Female names
                 ImGui::TableSetColumnIndex(2);
                 if (i < language->femaleNames.size())
                   ImGui::TextUnformatted(language->femaleNames[i].c_str());
 
-                // Surnames
                 ImGui::TableSetColumnIndex(3);
                 if (i < language->surnames.size())
                   ImGui::TextUnformatted(language->surnames[i].c_str());
 
-                // Other names
                 ImGui::TableSetColumnIndex(4);
                 if (i < language->names.size())
                   ImGui::TextUnformatted(language->names[i].c_str());
@@ -753,34 +824,43 @@ void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
 
               ImGui::EndTable();
             }
+
             if (ShowDatasetPopup("DatasetPopup",
                                  languageGenerator.datasetsByLanguage,
                                  activeDatasets)) {
-              // gather the datasets
               std::vector<std::string> datasetsToUse;
               for (const auto &ds : activeDatasets) {
                 datasetsToUse.push_back(ds);
-                auto newLanguageGroup = std::make_shared<LanguageGroup>(
-                    languageGenerator.generateLanguageGroup(
-                        cultureGroup->getCultures().size(), datasetsToUse,
-                        Fwg::Cfg::Values().mapSeed));
-                cultureGroup->setLanguageGroup(newLanguageGroup);
               }
+              auto newLanguageGroup = std::make_shared<LanguageGroup>(
+                  languageGenerator.generateLanguageGroup(
+                      cultureGroup->getCultures().size(), datasetsToUse,
+                      Fwg::Cfg::Values().mapSeed));
+              cultureGroup->setLanguageGroup(newLanguageGroup);
             }
+          } else {
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.2f, 1.0f),
+                               "Click a region to view culture details");
           }
+        } else {
+          ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.2f, 1.0f),
+                             "Click a land region to view culture details");
         }
       }
+
+      ImGui::Spacing();
+      ImGui::SeparatorText("Load Custom Cultures");
+
       if (triggeredDrag) {
         triggeredDrag = false;
         Fwg::Utils::Logging::logLine("Currently not possible to load cultures");
-
         uiUtils->resetTexture();
-        // TODO Add on loading redoCulture = false;
       }
     }
     ImGui::EndTabItem();
   }
 }
+
 void ArdaUI::showReligionTab(Fwg::Cfg &cfg) {
   if (Fwg::UI::Elements::BeginSubTabItem("Religion")) {
     if (uiUtils->tabSwitchEvent()) {
@@ -801,13 +881,13 @@ void ArdaUI::showReligionTab(Fwg::Cfg &cfg) {
 
       if (triggeredDrag) {
         triggeredDrag = false;
-
         uiUtils->resetTexture();
       }
     }
     ImGui::EndTabItem();
   }
 }
+
 void ArdaUI::showLanguageTab(Fwg::Cfg &cfg) {}
 
 void ArdaUI::overview(Fwg::Cfg &cfg) {
@@ -818,6 +898,13 @@ void ArdaUI::overview(Fwg::Cfg &cfg) {
                                   ardaGen->worldMap, ardaGen->regionMap, ""));
       uiUtils->updateImage(1, Fwg::Gfx::Image());
     }
+
+    ImGui::SeparatorText("Visual Layer Selection");
+    ImGui::TextWrapped(
+        "Toggle layers and adjust their weights to create custom "
+        "visualizations.");
+
+    ImGui::Spacing();
 
     if (showVisualLayerToggles(visualLayerInfos)) {
       std::vector<Fwg::Gfx::WeightedImage> layers;
@@ -832,7 +919,7 @@ void ArdaUI::overview(Fwg::Cfg &cfg) {
 
           case VisualLayerType::LANDFORMS:
             layers.push_back(
-                {Fwg::Gfx::landMask(ardaGen->terrainData), info.weight});
+                {Fwg::Gfx::landFormMap(ardaGen->terrainData), info.weight});
             break;
 
           case VisualLayerType::TOPOGRAPHY:
@@ -993,7 +1080,6 @@ void ArdaUI::overview(Fwg::Cfg &cfg) {
       }
       uiUtils->updateImage(
           0, Fwg::Gfx::mergeWeightedImages(cfg.width, cfg.height, layers));
-      // show the layers
     }
 
     ImGui::EndTabItem();
