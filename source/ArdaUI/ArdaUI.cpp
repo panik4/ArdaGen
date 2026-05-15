@@ -12,18 +12,18 @@ ArdaUI::ArdaUI()
 
 int ArdaUI::shiny(std::shared_ptr<Arda::ArdaGen> &ardaGen) {
 
-  CreateDeviceGL("ArdaGen 0.10.1", 0, 0);
+  Fwg::UI::Utils::CreateDeviceGL(window, "ArdaGen 0.10.2", 0, 0);
 
-  uiUtils->setupImGuiContextAndStyle();
+  Fwg::UI::Utils::setupImGuiContextAndStyle();
   ImGui_ImplGlfw_InitForOpenGL(window, true);
-  ImGui_ImplOpenGL3_Init("#version 450");
+  ImGui_ImplOpenGL3_Init("#version 130");
 
   glfwSetWindowUserPointer(window, this);
   glfwSetDropCallback(
       window, [](GLFWwindow *win, int count, const char **paths) {
         auto *fwgui = reinterpret_cast<ArdaUI *>(glfwGetWindowUserPointer(win));
-        fwgui->triggeredDrag = (count > 0);
-        fwgui->draggedFile = (count > 0) ? std::string(paths[count - 1]) : "";
+        fwgui->uiContext.triggeredDrag = (count > 0);
+        fwgui->uiContext.draggedFile = (count > 0) ? std::string(paths[count - 1]) : "";
       });
 
   auto &cfg = Fwg::Cfg::Values();
@@ -31,7 +31,7 @@ int ArdaUI::shiny(std::shared_ptr<Arda::ArdaGen> &ardaGen) {
   init(cfg, *ardaGen);
 
   while (!glfwWindowShouldClose(window)) {
-    triggeredDrag = false;
+    uiContext.triggeredDrag = false;
     glfwPollEvents();
 
     ImGui_ImplOpenGL3_NewFrame();
@@ -59,7 +59,7 @@ int ArdaUI::shiny(std::shared_ptr<Arda::ArdaGen> &ardaGen) {
 
           if (ImGui::BeginTabBar("Steps", ImGuiTabBarFlags_None)) {
             // Disable all inputs if computation is running
-            if (computationRunning) {
+            if (uiContext.asyncContext.computationRunning) {
               ImGui::BeginDisabled();
             }
 
@@ -67,19 +67,20 @@ int ArdaUI::shiny(std::shared_ptr<Arda::ArdaGen> &ardaGen) {
             overview(cfg);
             // showScenarioTab(cfg, ardaGen);
             // Re-enable inputs if computation is running
-            if (computationRunning && !computationStarted) {
+            if (uiContext.asyncContext.computationRunning &&
+                !uiContext.asyncContext.computationStarted) {
               ImGui::EndDisabled();
             }
             // Check if the computation is done
-            if (computationRunning &&
-                computationFutureBool.wait_for(std::chrono::seconds(0)) ==
-                    std::future_status::ready) {
-              computationRunning = false;
-              uiUtils->resetTexture();
+            if (uiContext.asyncContext.computationRunning &&
+                uiContext.asyncContext.computationFutureBool.wait_for(
+                    std::chrono::seconds(0)) == std::future_status::ready) {
+              uiContext.asyncContext.computationRunning = false;
+              uiContext.imageContext.resetTexture();
             }
 
-            if (computationRunning) {
-              computationStarted = false;
+            if (uiContext.asyncContext.computationRunning) {
+              uiContext.asyncContext.computationStarted = false;
               ImGui::Text("Working, please be patient");
             } else {
               ImGui::Text("Ready!");
@@ -126,11 +127,12 @@ int ArdaUI::shiny(std::shared_ptr<Arda::ArdaGen> &ardaGen) {
 }
 
 void ArdaUI::automapAreas() {
-  if (modifiedAreas && !computationRunning) {
+  if (uiContext.generationContext.modifiedAreas &&
+      !uiContext.asyncContext.computationRunning) {
     ardaGen->mapProvinces();
     ardaGen->mapRegions();
     ardaGen->mapContinents();
-    modifiedAreas = false;
+    uiContext.generationContext.modifiedAreas = false;
     redoDevelopment = true;
     redoPopulation = true;
     redoTopography = true;
@@ -144,12 +146,6 @@ bool ArdaUI::scenarioGenReady(bool printIssue) {
 
   auto &generator = ardaGen;
   auto &cfg = Fwg::Cfg::Values();
-
-  if (redoProvinces) {
-    if (printIssue)
-      Fwg::Utils::Logging::logLine("Province redo is pending.");
-    ready = false;
-  }
 
   if (!generator->terrainData.detailedHeightMap.size()) {
     if (printIssue)
@@ -200,12 +196,10 @@ void ArdaUI::showCivilizationTab(Fwg::Cfg &cfg) {
   int retCode = 0;
   if (Fwg::UI::Elements::BeginMainTabItem(
           "Civilisation", redoCulture || redoDevelopment || redoPopulation)) {
-    if (uiUtils->tabSwitchEvent()) {
-      // force update so sub-selected tabs get updated
-      uiUtils->setForceUpdate();
-      uiUtils->resetTexture();
+    if (uiContext.tabSwitchEvent()) {
+      uiContext.imageContext.resetTexture();
     }
-    uiUtils->showHelpTextBox("Civilisation");
+    uiContext.helpContext.showHelpTextBox("Civilisation");
 
     ImGui::SeparatorText("Civilisation Parameters");
 
@@ -245,16 +239,17 @@ void ArdaUI::showCivilizationTab(Fwg::Cfg &cfg) {
       if (guard.ready()) {
         if (Fwg::UI::Elements::AutomationStepButton(
                 "Generate all civilisation data automatically")) {
-          computationFutureBool = runAsync([&cfg, this]() {
-            ardaGen->genCivilisationData();
-            uiUtils->resetTexture();
-            redoTopography = false;
-            redoDevelopment = false;
-            redoPopulation = false;
-            redoCulture = false;
-            redoLocations = false;
-            return true;
-          });
+          uiContext.asyncContext.computationFutureBool =
+              uiContext.asyncContext.runAsync([&cfg, this]() {
+                ardaGen->genCivilisationData();
+                uiContext.imageContext.resetTexture();
+                redoTopography = false;
+                redoDevelopment = false;
+                redoPopulation = false;
+                redoCulture = false;
+                redoLocations = false;
+                return true;
+              });
         }
       }
     }
@@ -277,10 +272,10 @@ void ArdaUI::showCivilizationTab(Fwg::Cfg &cfg) {
 
 void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
   if (Fwg::UI::Elements::BeginSubTabItem("Development", redoDevelopment)) {
-    if (uiUtils->tabSwitchEvent(true)) {
-      uiUtils->updateImage(
+    if (uiContext.tabSwitchEvent(true)) {
+      uiContext.imageContext.updateImage(
           0, Arda::Gfx::displayDevelopment(ardaGen->ardaProvinces));
-      uiUtils->updateImage(1, ardaGen->worldMap);
+      uiContext.imageContext.updateImage(1, ardaGen->worldMap);
     }
     auto guard = Fwg::UI::PrerequisiteChecker::require(
         {Fwg::UI::PrerequisiteChecker::climate(ardaGen->climateData),
@@ -292,10 +287,10 @@ void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
          Fwg::UI::PrerequisiteChecker::regions(ardaGen->areaData),
          Fwg::UI::PrerequisiteChecker::continents(ardaGen->areaData)});
     if (guard.ready()) {
-      if (triggeredDrag) {
-        triggeredDrag = false;
-        ardaGen->loadDevelopment(cfg, draggedFile);
-        uiUtils->resetTexture();
+      if (uiContext.triggeredDrag) {
+        uiContext.triggeredDrag = false;
+        ardaGen->loadDevelopment(cfg, uiContext.draggedFile);
+        uiContext.imageContext.resetTexture();
         redoDevelopment = false;
       }
 
@@ -319,25 +314,27 @@ void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
       if (Fwg::UI::Elements::Button("Generate with Random Modifiers", false,
                                     ImVec2(250, 0))) {
         cfg.randomDevelopment = true;
-        computationFutureBool = runAsync([&cfg, this]() {
-          ardaGen->genDevelopment(cfg);
-          uiUtils->resetTexture();
-          redoDevelopment = false;
-          return true;
-        });
+        uiContext.asyncContext.computationFutureBool =
+            uiContext.asyncContext.runAsync([&cfg, this]() {
+              ardaGen->genDevelopment(cfg);
+              uiContext.imageContext.resetTexture();
+              redoDevelopment = false;
+              return true;
+            });
       }
 
       ImGui::SameLine();
 
       if (Fwg::UI::Elements::ImportantStepButton(
               "Generate with Current Modifiers", ImVec2(250, 0))) {
-        computationFutureBool = runAsync([&cfg, this]() {
-          cfg.randomDevelopment = false;
-          ardaGen->genDevelopment(cfg);
-          uiUtils->resetTexture();
-          redoDevelopment = false;
-          return true;
-        });
+        uiContext.asyncContext.computationFutureBool =
+            uiContext.asyncContext.runAsync([&cfg, this]() {
+              cfg.randomDevelopment = false;
+              ardaGen->genDevelopment(cfg);
+              uiContext.imageContext.resetTexture();
+              redoDevelopment = false;
+              return true;
+            });
       }
 
       ImGui::Spacing();
@@ -360,13 +357,14 @@ void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
 
           if (grid.AddInputDouble("Development Modifier",
                                   &continent->developmentModifier, 0.0, 10.0)) {
-            computationFutureBool = runAsync([&cfg, this]() {
-              cfg.randomDevelopment = false;
-              ardaGen->genDevelopment(cfg);
-              uiUtils->resetTexture();
-              redoDevelopment = false;
-              return true;
-            });
+            uiContext.asyncContext.computationFutureBool =
+                uiContext.asyncContext.runAsync([&cfg, this]() {
+                  cfg.randomDevelopment = false;
+                  ardaGen->genDevelopment(cfg);
+                  uiContext.imageContext.resetTexture();
+                  redoDevelopment = false;
+                  return true;
+                });
           }
         }
       } else {
@@ -381,10 +379,10 @@ void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
 
 void ArdaUI::showPopulationTab(Fwg::Cfg &cfg) {
   if (Fwg::UI::Elements::BeginSubTabItem("Population", redoPopulation)) {
-    if (uiUtils->tabSwitchEvent()) {
-      uiUtils->updateImage(
+    if (uiContext.tabSwitchEvent()) {
+      uiContext.imageContext.updateImage(
           0, Arda::Gfx::displayPopulation(ardaGen->ardaProvinces));
-      uiUtils->updateImage(1, ardaGen->worldMap);
+      uiContext.imageContext.updateImage(1, ardaGen->worldMap);
     }
 
     ImGui::SeparatorText("Population Configuration");
@@ -419,12 +417,13 @@ void ArdaUI::showPopulationTab(Fwg::Cfg &cfg) {
     if (guard.ready()) {
       if (Fwg::UI::Elements::ImportantStepButton("Generate Population",
                                                  ImVec2(220, 0))) {
-        computationFutureBool = runAsync([&cfg, this]() {
-          ardaGen->genPopulation(cfg);
-          uiUtils->resetTexture();
-          redoPopulation = false;
-          return true;
-        });
+        uiContext.asyncContext.computationFutureBool =
+            uiContext.asyncContext.runAsync([&cfg, this]() {
+              ardaGen->genPopulation(cfg);
+              uiContext.imageContext.resetTexture();
+              redoPopulation = false;
+              return true;
+            });
       }
 
       ImGui::Spacing();
@@ -434,11 +433,11 @@ void ArdaUI::showPopulationTab(Fwg::Cfg &cfg) {
           "population density. The red channel will be used where "
           "bright red = high population, black = no population.");
 
-      if (triggeredDrag) {
-        triggeredDrag = false;
+      if (uiContext.triggeredDrag) {
+        uiContext.triggeredDrag = false;
         ardaGen->loadPopulation(
-            cfg, Fwg::IO::Reader::readGenericImage(draggedFile, cfg));
-        uiUtils->resetTexture();
+            cfg, Fwg::IO::Reader::readGenericImage(uiContext.draggedFile, cfg));
+        uiContext.imageContext.resetTexture();
         redoPopulation = false;
       }
     }
@@ -448,11 +447,11 @@ void ArdaUI::showPopulationTab(Fwg::Cfg &cfg) {
 
 void ArdaUI::showTopographyTab(Fwg::Cfg &cfg) {
   if (Fwg::UI::Elements::BeginSubTabItem("Topography", redoTopography)) {
-    if (uiUtils->tabSwitchEvent()) {
-      uiUtils->updateImage(
+    if (uiContext.tabSwitchEvent()) {
+      uiContext.imageContext.updateImage(
           0, Arda::Gfx::displayTopography(ardaGen->ardaData.civLayer,
                                           ardaGen->worldMap));
-      uiUtils->updateImage(1, Fwg::Gfx::Image());
+      uiContext.imageContext.updateImage(1, Fwg::Gfx::Image());
     }
     auto guard = Fwg::UI::PrerequisiteChecker::require(
         {Fwg::UI::PrerequisiteChecker::climate(ardaGen->climateData),
@@ -468,12 +467,13 @@ void ArdaUI::showTopographyTab(Fwg::Cfg &cfg) {
 
       if (Fwg::UI::Elements::ImportantStepButton("Generate Natural Features",
                                                  ImVec2(220, 0))) {
-        computationFutureBool = runAsync([&cfg, this]() {
-          ardaGen->genNaturalFeatures();
-          uiUtils->resetTexture();
-          redoTopography = false;
-          return true;
-        });
+        uiContext.asyncContext.computationFutureBool =
+            uiContext.asyncContext.runAsync([&cfg, this]() {
+              ardaGen->genNaturalFeatures();
+              uiContext.imageContext.resetTexture();
+              redoTopography = false;
+              return true;
+            });
       }
 
       ImGui::Spacing();
@@ -485,11 +485,11 @@ void ArdaUI::showTopographyTab(Fwg::Cfg &cfg) {
           "Anything apart from marshes and wasteland will be used "
           "for location generation.");
 
-      if (triggeredDrag) {
-        triggeredDrag = false;
+      if (uiContext.triggeredDrag) {
+        uiContext.triggeredDrag = false;
         ardaGen->loadNaturalFeatures(
-            cfg, Fwg::IO::Reader::readGenericImage(draggedFile, cfg));
-        uiUtils->resetTexture();
+            cfg, Fwg::IO::Reader::readGenericImage(uiContext.draggedFile, cfg));
+        uiContext.imageContext.resetTexture();
         redoTopography = false;
       }
     }
@@ -499,14 +499,14 @@ void ArdaUI::showTopographyTab(Fwg::Cfg &cfg) {
 
 void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
   if (Fwg::UI::Elements::BeginSubTabItem("Locations", redoLocations)) {
-    if (uiUtils->tabSwitchEvent()) {
-      uiUtils->updateImage(
+    if (uiContext.tabSwitchEvent()) {
+      uiContext.imageContext.updateImage(
           0, Arda::Gfx::displayLocations(ardaGen->areaData.regions,
                                          ardaGen->worldMap));
-      uiUtils->updateImage(
+      uiContext.imageContext.updateImage(
           0, Arda::Gfx::displayConnections(ardaGen->areaData.regions,
                                            ardaGen->locationMap));
-      uiUtils->updateImage(1, Fwg::Gfx::Image());
+      uiContext.imageContext.updateImage(1, Fwg::Gfx::Image());
     }
 
     ImGui::SeparatorText("Location Configuration");
@@ -539,24 +539,26 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
     if (guard.ready()) {
       if (Fwg::UI::Elements::Button("Clear All Locations", false,
                                     ImVec2(200, 0))) {
-        computationFutureBool = runAsync([this]() {
-          ardaGen->clearLocations();
-          uiUtils->resetTexture();
-          redoLocations = true;
-          return true;
-        });
+        uiContext.asyncContext.computationFutureBool =
+            uiContext.asyncContext.runAsync([this]() {
+              ardaGen->clearLocations();
+              uiContext.imageContext.resetTexture();
+              redoLocations = true;
+              return true;
+            });
       }
 
       ImGui::SameLine();
 
       if (Fwg::UI::Elements::ImportantStepButton("Generate All Locations",
                                                  ImVec2(200, 0))) {
-        computationFutureBool = runAsync([this]() {
-          ardaGen->genLocations();
-          uiUtils->resetTexture();
-          redoLocations = false;
-          return true;
-        });
+        uiContext.asyncContext.computationFutureBool =
+            uiContext.asyncContext.runAsync([this]() {
+              ardaGen->genLocations();
+              uiContext.imageContext.resetTexture();
+              redoLocations = false;
+              return true;
+            });
       }
 
       ImGui::Spacing();
@@ -579,12 +581,13 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
 
         for (auto &[label, type] : genButtons) {
           if (ImGui::Button(label, ImVec2(-1, 0))) {
-            computationFutureBool = runAsync([this, type]() {
-              ardaGen->genLocationType(type);
-              uiUtils->resetTexture();
-              redoLocations = false;
-              return true;
-            });
+            uiContext.asyncContext.computationFutureBool =
+                uiContext.asyncContext.runAsync([this, type]() {
+                  ardaGen->genLocationType(type);
+                  uiContext.imageContext.resetTexture();
+                  redoLocations = false;
+                  return true;
+                });
           }
         }
 
@@ -603,12 +606,13 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
 
         for (auto &[label, type] : detectButtons) {
           if (ImGui::Button(label, ImVec2(-1, 0))) {
-            computationFutureBool = runAsync([this, type]() {
-              ardaGen->detectLocationType(type);
-              uiUtils->resetTexture();
-              redoLocations = false;
-              return true;
-            });
+            uiContext.asyncContext.computationFutureBool =
+                uiContext.asyncContext.runAsync([this, type]() {
+                  ardaGen->detectLocationType(type);
+                  uiContext.imageContext.resetTexture();
+                  redoLocations = false;
+                  return true;
+                });
           }
         }
 
@@ -618,12 +622,12 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
       ImGui::Spacing();
       ImGui::SeparatorText("Load Custom Locations");
 
-      if (triggeredDrag) {
-        triggeredDrag = false;
+      if (uiContext.triggeredDrag) {
+        uiContext.triggeredDrag = false;
         redoLocations = false;
         ardaGen->loadLocations(
-            Fwg::IO::Reader::readGenericImage(draggedFile, cfg));
-        uiUtils->resetTexture();
+            Fwg::IO::Reader::readGenericImage(uiContext.draggedFile, cfg));
+        uiContext.imageContext.resetTexture();
       }
     }
     ImGui::EndTabItem();
@@ -632,11 +636,11 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
 
 void ArdaUI::showNavmeshTab(Fwg::Cfg &cfg) {
   if (Fwg::UI::Elements::BeginSubTabItem("Navmesh")) {
-    if (uiUtils->tabSwitchEvent()) {
-      uiUtils->updateImage(
+    if (uiContext.tabSwitchEvent()) {
+      uiContext.imageContext.updateImage(
           0, Arda::Gfx::displayConnections(ardaGen->areaData.regions,
                                            ardaGen->locationMap));
-      uiUtils->updateImage(1, ardaGen->regionMap);
+      uiContext.imageContext.updateImage(1, ardaGen->regionMap);
     }
 
     ImGui::SeparatorText("Navmesh Generation");
@@ -644,15 +648,16 @@ void ArdaUI::showNavmeshTab(Fwg::Cfg &cfg) {
     if (ardaGen->regionMap.initialised() &&
         ardaGen->locationMap.initialised()) {
       // if (ImGui::Button("Generate Navmesh")) {
-      //   computationFutureBool = runAsync([this]() {
+      //   uiContext.asyncContext.computationFutureBool =
+      //   uiContext.asyncContext.runAsync([this]() {
       //     ardaGen->genNavmesh({}, {});
-      //     uiUtils->resetTexture();
+      //     uiContext.imageContext.resetTexture();
       //     return true;
       //   });
       // }
 
-      if (triggeredDrag) {
-        triggeredDrag = false;
+      if (uiContext.triggeredDrag) {
+        uiContext.triggeredDrag = false;
       }
     } else {
       ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.2f, 1.0f),
@@ -712,10 +717,10 @@ bool ShowDatasetPopup(const char *popupLabel,
 
 void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
   if (Fwg::UI::Elements::BeginSubTabItem("Culture", redoCulture)) {
-    if (uiUtils->tabSwitchEvent(true)) {
-      uiUtils->updateImage(
+    if (uiContext.tabSwitchEvent(true)) {
+      uiContext.imageContext.updateImage(
           0, Arda::Gfx::displayCultureGroups(ardaGen->ardaProvinces));
-      uiUtils->updateImage(1, Fwg::Gfx::Image());
+      uiContext.imageContext.updateImage(1, Fwg::Gfx::Image());
     }
     auto guard = Fwg::UI::PrerequisiteChecker::require(
         {Fwg::UI::PrerequisiteChecker::climate(ardaGen->climateData),
@@ -729,13 +734,14 @@ void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
     if (guard.ready()) {
       if (Fwg::UI::Elements::ImportantStepButton("Generate Culture Data",
                                                  ImVec2(220, 0))) {
-        computationFutureBool = runAsync([this]() {
-          ardaGen->genEconomyData();
-          ardaGen->genCultureData();
-          uiUtils->resetTexture();
-          redoCulture = false;
-          return true;
-        });
+        uiContext.asyncContext.computationFutureBool =
+            uiContext.asyncContext.runAsync([this]() {
+              ardaGen->genEconomyData();
+              ardaGen->genCultureData();
+              uiContext.imageContext.resetTexture();
+              redoCulture = false;
+              return true;
+            });
       }
 
       ImGui::Spacing();
@@ -851,10 +857,10 @@ void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
       ImGui::Spacing();
       ImGui::SeparatorText("Load Custom Cultures");
 
-      if (triggeredDrag) {
-        triggeredDrag = false;
+      if (uiContext.triggeredDrag) {
+        uiContext.triggeredDrag = false;
         Fwg::Utils::Logging::logLine("Currently not possible to load cultures");
-        uiUtils->resetTexture();
+        uiContext.imageContext.resetTexture();
       }
     }
     ImGui::EndTabItem();
@@ -863,10 +869,10 @@ void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
 
 void ArdaUI::showReligionTab(Fwg::Cfg &cfg) {
   if (Fwg::UI::Elements::BeginSubTabItem("Religion")) {
-    if (uiUtils->tabSwitchEvent()) {
-      uiUtils->updateImage(0,
-                           Arda::Gfx::displayReligions(ardaGen->ardaProvinces));
-      uiUtils->updateImage(1, Fwg::Gfx::Image());
+    if (uiContext.tabSwitchEvent()) {
+      uiContext.imageContext.updateImage(
+          0, Arda::Gfx::displayReligions(ardaGen->ardaProvinces));
+      uiContext.imageContext.updateImage(1, Fwg::Gfx::Image());
     }
     auto guard = Fwg::UI::PrerequisiteChecker::require(
         {Fwg::UI::PrerequisiteChecker::climate(ardaGen->climateData),
@@ -879,9 +885,9 @@ void ArdaUI::showReligionTab(Fwg::Cfg &cfg) {
          Fwg::UI::PrerequisiteChecker::continents(ardaGen->areaData)});
     if (guard.ready()) {
 
-      if (triggeredDrag) {
-        triggeredDrag = false;
-        uiUtils->resetTexture();
+      if (uiContext.triggeredDrag) {
+        uiContext.triggeredDrag = false;
+        uiContext.imageContext.resetTexture();
       }
     }
     ImGui::EndTabItem();
@@ -892,11 +898,12 @@ void ArdaUI::showLanguageTab(Fwg::Cfg &cfg) {}
 
 void ArdaUI::overview(Fwg::Cfg &cfg) {
   if (Fwg::UI::Elements::BeginMainTabItem("Overview")) {
-    if (uiUtils->tabSwitchEvent()) {
-      uiUtils->updateImage(0, Fwg::Gfx::displayWorldCivilisationMap(
-                                  ardaGen->climateData, ardaGen->provinceMap,
-                                  ardaGen->worldMap, ardaGen->regionMap, ""));
-      uiUtils->updateImage(1, Fwg::Gfx::Image());
+    if (uiContext.tabSwitchEvent()) {
+      uiContext.imageContext.updateImage(
+          0, Fwg::Gfx::displayWorldCivilisationMap(
+                 ardaGen->climateData, ardaGen->provinceMap, ardaGen->worldMap,
+                 ardaGen->regionMap, ""));
+      uiContext.imageContext.updateImage(1, Fwg::Gfx::Image());
     }
 
     ImGui::SeparatorText("Visual Layer Selection");
@@ -1078,7 +1085,7 @@ void ArdaUI::overview(Fwg::Cfg &cfg) {
           }
         }
       }
-      uiUtils->updateImage(
+      uiContext.imageContext.updateImage(
           0, Fwg::Gfx::mergeWeightedImages(cfg.width, cfg.height, layers));
     }
 
@@ -1110,7 +1117,7 @@ std::shared_ptr<Arda::ArdaRegion> ArdaUI::getSelectedRegion() {
 
   static int selectedStateIndex = 0;
 
-  auto &clickEvents = uiUtils->clickEvents;
+  auto &clickEvents = uiContext.drawContext.clickEvents;
   if (clickEvents.size()) {
     auto pix = clickEvents.front();
     clickEvents.pop();
@@ -1124,7 +1131,7 @@ std::shared_ptr<Arda::ArdaRegion> ArdaUI::getSelectedRegion() {
       }
     }
   }
-  if (!computationRunning && selectedStateIndex >= 0 &&
+  if (!uiContext.asyncContext.computationRunning && selectedStateIndex >= 0 &&
       selectedStateIndex < ardaGen->ardaRegions.size()) {
     return ardaGen->ardaRegions[selectedStateIndex];
   }
