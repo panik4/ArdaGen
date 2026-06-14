@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 namespace Arda {
-class ArdaUI : public Fwg::FwgUI {
+class ArdaUI : public Fwg::UI::FwgUI {
   enum class VisualLayerType {
     HEIGHTMAP,
     LANDFORMS,
