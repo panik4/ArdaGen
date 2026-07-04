@@ -204,7 +204,7 @@ void ArdaUI::showCivilizationTab(Fwg::Cfg &cfg) {
     ImGui::SeparatorText("Civilisation Parameters");
 
     {
-      Fwg::UI::Elements::GridLayout grid(2, 250.0f, 12.0f);
+      Fwg::UI::Elements::GridLayout grid(2, scaled(250.0f), scaled(12.0f));
 
       grid.AddInputDouble("Development Influence", &cfg.developmentInfluence,
                           0.0, 10.0);
@@ -300,7 +300,7 @@ void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
                          "climate and habitability.");
 
       {
-        Fwg::UI::Elements::GridLayout grid(2, 250.0f, 12.0f);
+        Fwg::UI::Elements::GridLayout grid(2, scaled(250.0f), scaled(12.0f));
 
         for (auto &continent : ardaGen->ardaContinents) {
           std::string label = "Continent " + std::to_string(continent->ID);
@@ -350,7 +350,7 @@ void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
         auto continent = ardaGen->ardaContinents[modifiableState->continentID];
 
         {
-          Fwg::UI::Elements::GridLayout grid(2, 250.0f, 12.0f);
+          Fwg::UI::Elements::GridLayout grid(2, scaled(250.0f), scaled(12.0f));
 
           grid.AddText("Selected Continent", "%d",
                        modifiableState->continentID);
@@ -388,7 +388,7 @@ void ArdaUI::showPopulationTab(Fwg::Cfg &cfg) {
     ImGui::SeparatorText("Population Configuration");
 
     {
-      Fwg::UI::Elements::GridLayout grid(2, 250.0f, 12.0f);
+      Fwg::UI::Elements::GridLayout grid(2, scaled(250.0f), scaled(12.0f));
 
       if (grid.AddInputDouble("World Population Factor",
                               &ardaGen->ardaConfig.worldPopulationFactor, 0.0,
@@ -512,7 +512,7 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
     ImGui::SeparatorText("Location Configuration");
 
     {
-      Fwg::UI::Elements::GridLayout grid(2, 250.0f, 12.0f);
+      Fwg::UI::Elements::GridLayout grid(2, scaled(250.0f), scaled(12.0f));
 
       grid.AddSliderInt("Cities Per Region",
                         &ardaGen->ardaConfig.locationConfig.citiesPerRegion, 1,
@@ -764,7 +764,7 @@ void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
 
             // Culture info grid
             {
-              Fwg::UI::Elements::GridLayout grid(2, 180.0f, 12.0f);
+              Fwg::UI::Elements::GridLayout grid(2, scaled(180.0f), scaled(12.0f));
 
               grid.AddText("Culture", "%s", primaryCulture->name.c_str());
               grid.AddText("Culture Group", "%s", cultureGroup->name.c_str());
