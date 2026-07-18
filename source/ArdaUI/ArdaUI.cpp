@@ -1,10 +1,6 @@
 #include "ArdaUI/ArdaUI.h"
 
 namespace Arda {
-// Data
-
-// for state/country/strategic region editing
-static bool drawBorders = false;
 
 ArdaUI::ArdaUI()
     : FwgUI(), languageGenerator(Fwg::Cfg::Values().resourcePath +
@@ -23,7 +19,8 @@ int ArdaUI::shiny(std::shared_ptr<Arda::ArdaGen> &ardaGen) {
       window, [](GLFWwindow *win, int count, const char **paths) {
         auto *fwgui = reinterpret_cast<ArdaUI *>(glfwGetWindowUserPointer(win));
         fwgui->uiContext.triggeredDrag = (count > 0);
-        fwgui->uiContext.draggedFile = (count > 0) ? std::string(paths[count - 1]) : "";
+        fwgui->uiContext.draggedFile =
+            (count > 0) ? std::string(paths[count - 1]) : "";
       });
 
   auto &cfg = Fwg::Cfg::Values();
@@ -764,7 +761,8 @@ void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
 
             // Culture info grid
             {
-              Fwg::UI::Elements::GridLayout grid(2, scaled(180.0f), scaled(12.0f));
+              Fwg::UI::Elements::GridLayout grid(2, scaled(180.0f),
+                                                 scaled(12.0f));
 
               grid.AddText("Culture", "%s", primaryCulture->name.c_str());
               grid.AddText("Culture Group", "%s", cultureGroup->name.c_str());
