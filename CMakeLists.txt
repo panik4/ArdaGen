@@ -16,7 +16,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # ------------------------------------------------------------
 if(MSVC)
     # Multi-threaded compilation, function-level linking, etc.
-    add_compile_options(/MP /Gy /permissive- /W4)
+    add_compile_options(/MP /Gy /permissive- /W4 /bigobj)
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /Ob2 /DNDEBUG")
 else()
     # GCC/Clang

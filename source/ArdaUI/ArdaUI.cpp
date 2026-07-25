@@ -8,7 +8,7 @@ ArdaUI::ArdaUI()
 
 int ArdaUI::shiny(std::shared_ptr<Arda::ArdaGen> &ardaGen) {
 
-  Fwg::UI::Utils::CreateDeviceGL(window, "ArdaGen 0.11.0", 0, 0);
+  Fwg::UI::Utils::CreateDeviceGL(window, "ArdaGen 0.11.1", 0, 0);
 
   Fwg::UI::Utils::setupImGuiContextAndStyle();
   ImGui_ImplGlfw_InitForOpenGL(window, true);
