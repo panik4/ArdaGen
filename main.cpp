@@ -40,7 +40,7 @@ int main() {
       Fwg::Utils::Logging::logLine("Config could not be loaded");
     }
     buffer << f.rdbuf();
-    Fwg::Parsing::replaceInStringStream(buffer, "\\", "//");
+    Fwg::Parsing::replaceInStringStream(buffer, "\\", "/");
     pt::read_json(buffer, metaConf);
   } catch (std::exception &e) {
     Fwg::Utils::Logging::logLine("Incorrect config \"MetaConf.json\"");

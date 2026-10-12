@@ -1,4 +1,8 @@
 #include "ArdaUI/ArdaUI.h"
+#include "simulation/Simulation.h"
+
+#include <filesystem>
+#include <misc/cpp/imgui_stdlib.h>
 
 namespace Arda {
 
@@ -248,8 +252,67 @@ void ArdaUI::showCivilizationTab(Fwg::Cfg &cfg) {
                 return true;
               });
         }
+        //if (Fwg::UI::Elements::AutomationStepButton(
+        //        "Run history simulation and export artifacts")) {
+        //  auto continents = ardaGen->ardaContinents;
+        //  auto worldMap = ardaGen->worldMap;
+        //  auto climateData = ardaGen->climateData;
+        //  auto terrainData = ardaGen->terrainData;
+        //  const auto outputDirectory =
+        //      std::filesystem::path(Fwg::Cfg::Values().mapsPath) / "simulation";
+        //  simulationStatus = "History simulation is running...";
+        //  uiContext.asyncContext.computationFutureBool =
+        //      uiContext.asyncContext.runAsync(
+        //          [this, continents = std::move(continents),
+        //           worldMap = std::move(worldMap),
+        //           climateData = std::move(climateData),
+        //           terrainData = std::move(terrainData), outputDirectory]() {
+        //            Arda::Simulation::HistorySimulation simulation;
+        //            const Arda::Simulation::Input input{
+        //                continents, &climateData, &terrainData};
+        //            const auto result = simulation.run(input);
+        //            std::map<Arda::Simulation::ProvinceId, size_t> provinceAreas;
+        //            for (const auto &province : ardaGen->ardaProvinces)
+        //              provinceAreas.emplace(province->ID, province->pixels.size());
+        //            ardaGen->ardaData.simulationExport =
+        //                Arda::Simulation::SimulationExporter::exportFinalState(
+        //                    result.finalState, simulation.getProvinceRegions(), result.events, provinceAreas);
+        //            ardaGen->deriveDevelopment(Fwg::Cfg::Values());
+        //            ardaGen->derivePopulation(Fwg::Cfg::Values());
+        //            ardaGen->deriveCultureData();
+        //            redoDevelopment = false;
+        //            redoPopulation = false;
+        //            redoCulture = false;
+        //            // if (!result.succeeded()) {
+        //            //   simulationStatus = "History simulation failed: " +
+        //            //       result.errors.front().message;
+        //            //   Fwg::Utils::Logging::logLine(simulationStatus);
+        //            //   return false;
+        //            // }
+
+        //            std::vector<Arda::Simulation::ValidationError> exportErrors;
+        //            const auto artifacts = simulation.writeArtifacts(
+        //                input, result, worldMap, outputDirectory, exportErrors);
+        //            if (!artifacts) {
+        //              simulationStatus = "History artifact export failed: " +
+        //                                 exportErrors.front().message;
+        //              Fwg::Utils::Logging::logLine(simulationStatus);
+        //              return false;
+        //            }
+
+        //            simulationStatus =
+        //                "History simulation exported " +
+        //                std::to_string(artifacts->ownershipMaps.size()) +
+        //                " ownership maps to " + outputDirectory.string();
+        //            Fwg::Utils::Logging::logLine(simulationStatus);
+        //            return true;
+        //          });
+        //}
       }
     }
+
+    if (!simulationStatus.empty())
+      ImGui::TextWrapped("%s", simulationStatus.c_str());
 
     ImGui::Spacing();
     ImGui::SeparatorText("Manually edit civ data");
@@ -714,6 +777,9 @@ bool ShowDatasetPopup(const char *popupLabel,
 
 void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
   if (Fwg::UI::Elements::BeginSubTabItem("Culture", redoCulture)) {
+    static std::string cultureGroupStatePath =
+        Fwg::Cfg::Values().mapsPath + "world/cultureGroups.txt";
+    static std::string cultureGroupStateStatus;
     if (uiContext.tabSwitchEvent(true)) {
       uiContext.imageContext.updateImage(
           0, Arda::Gfx::displayCultureGroups(ardaGen->ardaProvinces));
@@ -856,10 +922,44 @@ void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
       ImGui::SeparatorText("Load Custom Cultures");
 
       if (uiContext.triggeredDrag) {
+        const auto inputImage =
+            Fwg::IO::Reader::readGenericImage(uiContext.draggedFile, cfg);
+        if (ardaGen->loadCultures(inputImage)) {
+          uiContext.imageContext.updateImage(
+              0, Arda::Gfx::displayCultureGroups(ardaGen->ardaProvinces));
+          uiContext.imageContext.updateImage(1, Fwg::Gfx::Image());
+          redoCulture = false;
+        }
         uiContext.triggeredDrag = false;
-        Fwg::Utils::Logging::logLine("Currently not possible to load cultures");
         uiContext.imageContext.resetTexture();
       }
+
+      ImGui::Spacing();
+      ImGui::SeparatorText("Culture Group Sidecar");
+      ImGui::SetNextItemWidth(scaled(360.0f));
+      ImGui::InputText("##cultureGroupStatePath", &cultureGroupStatePath);
+      ImGui::SameLine();
+      if (ImGui::Button("Save State")) {
+        cultureGroupStateStatus =
+            ardaGen->saveCultureGroupState(cultureGroupStatePath)
+                ? "Culture-group state saved."
+                : "Could not save culture-group state.";
+      }
+      ImGui::SameLine();
+      if (ImGui::Button("Load State")) {
+        if (ardaGen->loadCultureGroupState(cultureGroupStatePath)) {
+          uiContext.imageContext.updateImage(
+              0, Arda::Gfx::displayCultureGroups(ardaGen->ardaProvinces));
+          uiContext.imageContext.resetTexture();
+          resetSelection = true;
+          cultureGroupStateStatus = "Culture-group state loaded.";
+        } else {
+          cultureGroupStateStatus =
+              "Could not load state; check the file and current culture groups.";
+        }
+      }
+      if (!cultureGroupStateStatus.empty())
+        ImGui::TextUnformatted(cultureGroupStateStatus.c_str());
     }
     ImGui::EndTabItem();
   }
@@ -908,183 +1008,12 @@ void ArdaUI::overview(Fwg::Cfg &cfg) {
     ImGui::TextWrapped(
         "Toggle layers and adjust their weights to create custom "
         "visualizations.");
-
     ImGui::Spacing();
 
     if (showVisualLayerToggles(visualLayerInfos)) {
-      std::vector<Fwg::Gfx::WeightedImage> layers;
-      for (const auto &[type, info] : visualLayerInfos) {
-        if (info.toggled) {
-          switch (type) {
-          case VisualLayerType::HEIGHTMAP:
-            layers.push_back({Fwg::Gfx::displayHeightMap(
-                                  ardaGen->terrainData.detailedHeightMap),
-                              info.weight});
-            break;
-
-          case VisualLayerType::LANDFORMS:
-            layers.push_back(
-                {Fwg::Gfx::landFormMap(ardaGen->terrainData), info.weight});
-            break;
-
-          case VisualLayerType::TOPOGRAPHY:
-            layers.push_back(
-                {Fwg::Gfx::topographyMap(ardaGen->terrainData.altitudes),
-                 info.weight});
-            break;
-
-          case VisualLayerType::NORMALMAP:
-            layers.push_back(
-                {Fwg::Gfx::displaySobelMap(ardaGen->terrainData.sobelData),
-                 info.weight});
-            break;
-
-          case VisualLayerType::INCLINATION:
-            // TODO: Implement inclination map
-            break;
-
-          case VisualLayerType::RELSURROUNDINGS:
-            // TODO: Implement relative surroundings map
-            break;
-
-          case VisualLayerType::HUMIDITY:
-            layers.push_back(
-                {Fwg::Gfx::Climate::displayHumidity(ardaGen->climateData),
-                 info.weight});
-            break;
-
-          case VisualLayerType::TEMPERATURE:
-            layers.push_back(
-                {Fwg::Gfx::Climate::displayTemperature(ardaGen->climateData),
-                 info.weight});
-            break;
-
-          case VisualLayerType::CLIMATE:
-            layers.push_back(
-                {Fwg::Gfx::Climate::displayClimate(ardaGen->climateData, false),
-                 info.weight});
-            break;
-
-          case VisualLayerType::TREECLIMATE:
-            layers.push_back(
-                {Fwg::Gfx::Climate::displayClimate(ardaGen->climateData, true),
-                 info.weight});
-            break;
-
-          case VisualLayerType::TREEDENSITY:
-            layers.push_back(
-                {Fwg::Gfx::Climate::displayTreeDensity(ardaGen->climateData),
-                 info.weight});
-            break;
-
-          case VisualLayerType::HABITABILITY:
-            layers.push_back({Fwg::Gfx::displayHabitability(
-                                  ardaGen->climateData.habitabilities),
-                              info.weight});
-            break;
-
-          case VisualLayerType::ARABLELAND:
-            layers.push_back(
-                {Fwg::Gfx::Climate::displayArableLand(ardaGen->climateData),
-                 info.weight});
-            break;
-
-          case VisualLayerType::SUPERSEGMENTS:
-            layers.push_back({Fwg::Gfx::Segments::displaySuperSegments(
-                                  ardaGen->areaData.superSegments),
-                              info.weight});
-            break;
-
-          case VisualLayerType::SEGMENTS:
-            layers.push_back({Fwg::Gfx::Segments::displaySegments(
-                                  ardaGen->areaData.segments),
-                              info.weight});
-            break;
-
-          case VisualLayerType::PROVINCES:
-            layers.push_back({ardaGen->provinceMap, info.weight});
-            break;
-
-          case VisualLayerType::REGIONS:
-            layers.push_back({ardaGen->regionMap, info.weight});
-            break;
-
-          case VisualLayerType::REGIONSWITHPROVINCES:
-            // TODO: Implement regions with province overlay
-            break;
-
-          case VisualLayerType::REGIONSWITHBORDERS:
-            // TODO: Implement region borders overlay
-            break;
-
-          case VisualLayerType::SUPERREGIONS:
-            layers.push_back({ardaGen->superRegionMap, info.weight});
-            break;
-
-          case VisualLayerType::CONTINENTS:
-            layers.push_back(
-                {Fwg::Gfx::simpleContinents(ardaGen->areaData.continents,
-                                            ardaGen->areaData.seaBodies),
-                 info.weight});
-            break;
-
-          case VisualLayerType::POPULATION:
-            layers.push_back(
-                {Arda::Gfx::displayPopulation(ardaGen->ardaProvinces),
-                 info.weight});
-            break;
-
-          case VisualLayerType::DEVELOPMENT:
-            layers.push_back(
-                {Arda::Gfx::displayDevelopment(ardaGen->ardaProvinces),
-                 info.weight});
-            break;
-
-          case VisualLayerType::LOCATIONS:
-            layers.push_back({Arda::Gfx::displayLocations(
-                                  ardaGen->areaData.regions, ardaGen->worldMap),
-                              info.weight});
-            break;
-
-          case VisualLayerType::WORLD_MAP:
-            layers.push_back({ardaGen->worldMap, info.weight});
-            break;
-
-          case VisualLayerType::CIVILISATION_MAP:
-            layers.push_back({Fwg::Gfx::displayWorldCivilisationMap(
-                                  ardaGen->climateData, ardaGen->provinceMap,
-                                  ardaGen->worldMap, ardaGen->regionMap, ""),
-                              info.weight});
-            break;
-
-          case VisualLayerType::COUNTRIES:
-            layers.push_back({ardaGen->countryMap, info.weight});
-            break;
-
-          case VisualLayerType::CULTUREGROUPS:
-            layers.push_back(
-                {Arda::Gfx::displayCultureGroups(ardaGen->ardaProvinces),
-                 info.weight});
-            break;
-
-          case VisualLayerType::CULTURES:
-            layers.push_back(
-                {Arda::Gfx::displayCultures(ardaGen->ardaProvinces),
-                 info.weight});
-            break;
-
-          case VisualLayerType::RELIGIONS:
-            // TODO: Implement religions visualization
-            break;
-
-          default:
-            // TODO: Handle unexpected layer type
-            break;
-          }
-        }
-      }
       uiContext.imageContext.updateImage(
-          0, Fwg::Gfx::mergeWeightedImages(cfg.width, cfg.height, layers));
+          0, UI::renderVisualLayers(*ardaGen, cfg.width, cfg.height,
+                                    visualLayerInfos));
     }
 
     ImGui::EndTabItem();
@@ -1092,22 +1021,22 @@ void ArdaUI::overview(Fwg::Cfg &cfg) {
 }
 
 bool ArdaUI::showVisualLayerToggles(
-    std::map<VisualLayerType, VisualLayerInfo> &layerVisibility) {
+    UI::VisualLayerSettings &layerVisibility) {
   bool changed = false;
-
-  for (auto &[type, info] : visualLayerInfos) {
-    if (ImGui::Checkbox(info.name.c_str(), &info.toggled)) {
+  for (auto &[type, info] : layerVisibility) {
+    const auto label = info.composition == UI::VisualLayerComposition::Overwrite
+                           ? info.name + " (Overlay)"
+                           : info.name;
+    if (ImGui::Checkbox(label.c_str(), &info.toggled)) {
       changed = true;
     }
-    // Optional: ImGui::SliderFloat for weight
-    if (info.toggled) {
-      if (ImGui::SliderFloat(("Weight##" + info.name).c_str(), &info.weight,
-                             0.0f, 1.0f)) {
-        changed = true;
-      }
+    if (info.toggled &&
+        info.composition == UI::VisualLayerComposition::Blend &&
+        ImGui::SliderFloat(("Weight##" + info.name).c_str(), &info.weight,
+                           0.0f, 1.0f)) {
+      changed = true;
     }
   }
-
   return changed;
 }
 
