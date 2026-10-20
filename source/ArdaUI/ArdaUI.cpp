@@ -1013,6 +1013,7 @@ void ArdaUI::overview(Fwg::Cfg &cfg) {
     if (showVisualLayerToggles(visualLayerInfos)) {
       uiContext.imageContext.updateImage(
           0, UI::renderVisualLayers(*ardaGen, cfg.width, cfg.height,
+                                    ardaGen->areaGenerationContext(cfg),
                                     visualLayerInfos));
     }
 

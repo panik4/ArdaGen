@@ -94,10 +94,11 @@ VisualLayerSettings createVisualLayerPreset(const VisualLayerPreset preset) {
   return settings;
 }
 
-Fwg::Gfx::Image renderVisualLayers(ArdaGen &generator, const int width,
-                                   const int height,
-                                   const VisualLayerSettings &settings,
-                                   const int selectedStrategicRegionID) {
+Fwg::Gfx::Image renderVisualLayers(
+    ArdaGen &generator, const int width, const int height,
+    const Fwg::Areas::AreaGenerationContext &areaContext,
+    const VisualLayerSettings &settings,
+    const int selectedStrategicRegionID) {
   std::vector<Fwg::Gfx::WeightedImage> layers;
   for (const auto &[type, info] : settings) {
     if (!info.toggled || info.composition != VisualLayerComposition::Blend) {
@@ -171,12 +172,13 @@ Fwg::Gfx::Image renderVisualLayers(ArdaGen &generator, const int width,
       break;
     case VisualLayerType::SUPERSEGMENTS:
       layers.push_back({Fwg::Gfx::Segments::displaySuperSegments(
-                            generator.areaData.superSegments),
+                            generator.areaData.superSegments, areaContext),
                         info.weight});
       break;
     case VisualLayerType::SEGMENTS:
       layers.push_back(
-          {Fwg::Gfx::Segments::displaySegments(generator.areaData.segments),
+          {Fwg::Gfx::Segments::displaySegments(generator.areaData.segments,
+                                               areaContext),
            info.weight});
       break;
     case VisualLayerType::PROVINCES:
@@ -197,7 +199,8 @@ Fwg::Gfx::Image renderVisualLayers(ArdaGen &generator, const int width,
     case VisualLayerType::CONTINENTS:
       layers.push_back(
           {Fwg::Gfx::simpleContinents(generator.areaData.continents,
-                                      generator.areaData.seaBodies),
+                                      generator.areaData.seaBodies,
+                                      areaContext),
            info.weight});
       break;
     case VisualLayerType::POPULATION:

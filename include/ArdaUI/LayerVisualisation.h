@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ArdaGen.h"
+#include "areas/AreaGenerationContext.h"
 #include <map>
 #include <string>
 #include <utility>
@@ -71,8 +72,10 @@ enum class VisualLayerPreset {
 
 VisualLayerSettings createVisualLayerSettings();
 VisualLayerSettings createVisualLayerPreset(VisualLayerPreset preset);
-Fwg::Gfx::Image renderVisualLayers(ArdaGen &generator, int width, int height,
-                                   const VisualLayerSettings &settings,
-                                   int selectedStrategicRegionID = -1);
+Fwg::Gfx::Image renderVisualLayers(
+    ArdaGen &generator, int width, int height,
+    const Fwg::Areas::AreaGenerationContext &areaContext,
+    const VisualLayerSettings &settings,
+    int selectedStrategicRegionID = -1);
 
 } // namespace Arda::UI
