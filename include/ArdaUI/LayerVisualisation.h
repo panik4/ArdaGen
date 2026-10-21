@@ -74,6 +74,7 @@ VisualLayerSettings createVisualLayerSettings();
 VisualLayerSettings createVisualLayerPreset(VisualLayerPreset preset);
 Fwg::Gfx::Image renderVisualLayers(
     ArdaGen &generator, int width, int height,
+    const Fwg::Cfg &config,
     const Fwg::Areas::AreaGenerationContext &areaContext,
     const VisualLayerSettings &settings,
     int selectedStrategicRegionID = -1);

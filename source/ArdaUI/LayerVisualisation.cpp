@@ -96,9 +96,15 @@ VisualLayerSettings createVisualLayerPreset(const VisualLayerPreset preset) {
 
 Fwg::Gfx::Image renderVisualLayers(
     ArdaGen &generator, const int width, const int height,
+    const Fwg::Cfg &config,
     const Fwg::Areas::AreaGenerationContext &areaContext,
     const VisualLayerSettings &settings,
     const int selectedStrategicRegionID) {
+  const auto visualizationContext = config.visualizationContext();
+  const auto climateContext = config.climateGenerationContext();
+  const Fwg::Terrain::TerrainGenerationContext terrainContext(
+      config.width, config.height, config.baseArea, config.latLow,
+      config.latHigh);
   std::vector<Fwg::Gfx::WeightedImage> layers;
   for (const auto &[type, info] : settings) {
     if (!info.toggled || info.composition != VisualLayerComposition::Blend) {
@@ -108,66 +114,82 @@ Fwg::Gfx::Image renderVisualLayers(
     switch (type) {
     case VisualLayerType::HEIGHTMAP:
       layers.push_back(
-          {Fwg::Gfx::displayHeightMap(generator.terrainData.detailedHeightMap),
+          {Fwg::Gfx::displayHeightMap(generator.terrainData.detailedHeightMap,
+                                      visualizationContext),
            info.weight});
       break;
     case VisualLayerType::LANDFORMS:
       layers.push_back(
-          {Fwg::Gfx::landFormMap(generator.terrainData), info.weight});
+          {Fwg::Gfx::landFormMap(generator.terrainData, config.terrainConfig,
+                                 terrainContext),
+           info.weight});
       break;
     case VisualLayerType::TOPOGRAPHY:
       layers.push_back(
-          {Fwg::Gfx::topographyMap(generator.terrainData.altitudes),
+          {Fwg::Gfx::topographyMap(generator.terrainData.altitudes, width,
+                                   height),
            info.weight});
       break;
     case VisualLayerType::NORMALMAP:
       layers.push_back(
-          {Fwg::Gfx::displaySobelMap(generator.terrainData.sobelData),
+          {Fwg::Gfx::displaySobelMap(generator.terrainData.sobelData,
+                                     visualizationContext),
            info.weight});
       break;
     case VisualLayerType::INCLINATION:
       layers.push_back(
-          {Fwg::Gfx::displayHeightMap(generator.terrainData.inclination),
+          {Fwg::Gfx::displayHeightMap(generator.terrainData.inclination,
+                                      visualizationContext),
            info.weight});
       break;
     case VisualLayerType::RELSURROUNDINGS:
       layers.push_back(
-          {Fwg::Gfx::displayHeightMap(generator.terrainData.distance),
+          {Fwg::Gfx::displayHeightMap(generator.terrainData.distance,
+                                      visualizationContext),
            info.weight});
       break;
     case VisualLayerType::HUMIDITY:
       layers.push_back(
-          {Fwg::Gfx::Climate::displayHumidity(generator.climateData),
+          {Fwg::Gfx::Climate::displayHumidity(
+               generator.climateData, climateContext),
            info.weight});
       break;
     case VisualLayerType::TEMPERATURE:
       layers.push_back(
-          {Fwg::Gfx::Climate::displayTemperature(generator.climateData),
+          {Fwg::Gfx::Climate::displayTemperature(
+               generator.climateData, climateContext),
            info.weight});
       break;
     case VisualLayerType::CLIMATE:
       layers.push_back(
-          {Fwg::Gfx::Climate::displayClimate(generator.climateData, false),
+          {Fwg::Gfx::Climate::displayClimate(
+               generator.climateData, false, config.climateConfig,
+               climateContext),
            info.weight});
       break;
     case VisualLayerType::TREECLIMATE:
       layers.push_back(
-          {Fwg::Gfx::Climate::displayClimate(generator.climateData, true),
+          {Fwg::Gfx::Climate::displayClimate(
+               generator.climateData, true, config.climateConfig,
+               climateContext),
            info.weight});
       break;
     case VisualLayerType::TREEDENSITY:
       layers.push_back(
-          {Fwg::Gfx::Climate::displayTreeDensity(generator.climateData),
+          {Fwg::Gfx::Climate::displayTreeDensity(
+               generator.climateData, climateContext),
            info.weight});
       break;
     case VisualLayerType::HABITABILITY:
       layers.push_back(
-          {Fwg::Gfx::displayHabitability(generator.climateData.habitabilities),
+          {Fwg::Gfx::displayHabitability(generator.climateData.habitabilities,
+                                          climateContext),
            info.weight});
       break;
     case VisualLayerType::ARABLELAND:
       layers.push_back(
-          {Fwg::Gfx::Climate::displayArableLand(generator.climateData),
+          {Fwg::Gfx::Climate::displayArableLand(
+               generator.climateData, climateContext),
            info.weight});
       break;
     case VisualLayerType::SUPERSEGMENTS:
@@ -222,7 +244,8 @@ Fwg::Gfx::Image renderVisualLayers(
     case VisualLayerType::CIVILISATION_MAP:
       layers.push_back({Fwg::Gfx::displayWorldCivilisationMap(
                             generator.climateData, generator.provinceMap,
-                            generator.worldMap, generator.regionMap, ""),
+                            generator.worldMap, generator.regionMap, "",
+                            visualizationContext),
                         info.weight});
       break;
     case VisualLayerType::COUNTRIES:
