@@ -25,7 +25,7 @@ protected:
   std::string windowTitle() const override;
   std::string frameTitle() const override;
   void renderSettingsTabs(Fwg::Cfg &cfg) override;
-  void setCivilisationDirty(bool dirty);
+  virtual void setCivilisationDirty(bool dirty);
   bool redoDevelopment = false;
   bool redoPopulation = false;
   bool redoTopography = false;

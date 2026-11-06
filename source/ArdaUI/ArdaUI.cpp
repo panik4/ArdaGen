@@ -183,7 +183,7 @@ void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
   if (Fwg::UI::Elements::BeginSubTabItem("Development", redoDevelopment)) {
     if (uiContext.tabSwitchEvent(true)) {
       uiContext.imageContext.updateImage(
-          0, Arda::Gfx::displayDevelopment(currentGenerator().ardaProvinces));
+          0, Arda::Gfx::displayDevelopment(currentGenerator().ardaData.areaData.provinces));
       uiContext.imageContext.updateImage(1, currentGenerator().worldMap);
     }
     auto guard = Fwg::UI::PrerequisiteChecker::require(
@@ -215,7 +215,7 @@ void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
       {
         Fwg::UI::Elements::GridLayout grid(2, scaled(250.0f), scaled(12.0f));
 
-        for (auto &continent : currentGenerator().ardaContinents) {
+        for (auto &continent : currentGenerator().ardaData.areaData.continents) {
           std::string label = "Continent " + std::to_string(continent->ID);
           grid.AddInputDouble(label.c_str(), &continent->developmentModifier,
                               0.0, 10.0);
@@ -257,12 +257,12 @@ void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
       auto modifiableState = getSelectedRegion();
       if (modifiableState != nullptr && modifiableState->continentID >= 0 &&
           modifiableState->continentID <
-              currentGenerator().ardaContinents.size()) {
+              currentGenerator().ardaData.areaData.continents.size()) {
         ImGui::TextWrapped("Click a continent in the image and then modify the "
                            "base development modifiers.");
 
         auto continent =
-            currentGenerator().ardaContinents[modifiableState->continentID];
+            currentGenerator().ardaData.areaData.continents[modifiableState->continentID];
 
         {
           Fwg::UI::Elements::GridLayout grid(2, scaled(250.0f), scaled(12.0f));
@@ -297,7 +297,7 @@ void ArdaUI::showPopulationTab(Fwg::Cfg &cfg) {
   if (Fwg::UI::Elements::BeginSubTabItem("Population", redoPopulation)) {
     if (uiContext.tabSwitchEvent()) {
       uiContext.imageContext.updateImage(
-          0, Arda::Gfx::displayPopulation(currentGenerator().ardaProvinces));
+          0, Arda::Gfx::displayPopulation(currentGenerator().ardaData.areaData.provinces));
       uiContext.imageContext.updateImage(1, currentGenerator().worldMap);
     }
 
@@ -405,18 +405,17 @@ void ArdaUI::showTopographyTab(Fwg::Cfg &cfg) {
       ImGui::Spacing();
       ImGui::SeparatorText("Load Custom Topography");
       ImGui::TextWrapped(
-          "Drag and drop an image containing: marshes, wasteland, "
-          "cities, farmland, mines, forestry, ports.");
-      ImGui::TextWrapped(
-          "Anything apart from marshes and wasteland will be used "
-          "for location generation.");
+          "Drag and drop an image containing marshes and wasteland. "
+          "Location colours are ignored; existing locations are preserved.");
+      ImGui::TextWrapped("Development and population remain unchanged.");
 
       if (uiContext.triggeredDrag) {
         uiContext.triggeredDrag = false;
-        currentGenerator().loadNaturalFeatures(
+        const bool loaded = currentGenerator().loadNaturalFeatures(
             cfg, Fwg::IO::Reader::readGenericImage(uiContext.draggedFile, cfg.imageReadContext()));
         uiContext.imageContext.resetTexture();
-        redoTopography = false;
+        if (loaded)
+          redoTopography = false;
       }
     }
     ImGui::EndTabItem();
@@ -495,7 +494,7 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
       ImGui::Spacing();
 
       // Organized in a table
-      if (ImGui::BeginTable("LocationGeneration", 2,
+      if (ImGui::BeginTable("LocationGeneration", 1,
                             ImGuiTableFlags_SizingStretchSame)) {
 
         // --- GENERATION BUTTONS ---
@@ -524,44 +523,18 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
           }
         }
 
-        // --- DETECTION BUTTONS ---
-        ImGui::TableNextColumn();
-        ImGui::SeparatorText("Detect from Topography");
-        const std::vector<
-            std::pair<const char *, Fwg::Civilization::LocationType>>
-            detectButtons = {
-                {"Detect Cities", Fwg::Civilization::LocationType::City},
-                {"Detect Farms", Fwg::Civilization::LocationType::Farm},
-                {"Detect Ports", Fwg::Civilization::LocationType::Port},
-                {"Detect Mines", Fwg::Civilization::LocationType::Mine},
-                {"Detect Forests", Fwg::Civilization::LocationType::Forest},
-            };
-
-        for (auto &[label, type] : detectButtons) {
-          if (ImGui::Button(label, ImVec2(-1, 0))) {
-            uiContext.asyncContext.runAsync(
-                [this, type]() {
-                  currentGenerator().detectLocationType(type);
-                  return true;
-                },
-                [this](Fwg::UI::TaskResult::Outcome outcome) {
-                  redoLocations =
-                      outcome == Fwg::UI::TaskResult::Outcome::Failure;
-                });
-          }
-        }
-
         ImGui::EndTable();
       }
 
       ImGui::Spacing();
       ImGui::SeparatorText("Load Custom Locations");
+      ImGui::TextWrapped("An image replaces all cities, farms, ports, mines and forests. Natural topography is preserved.");
 
       if (uiContext.triggeredDrag) {
         uiContext.triggeredDrag = false;
-        redoLocations = false;
-        currentGenerator().loadLocations(
+        const bool loaded = currentGenerator().loadLocations(
             Fwg::IO::Reader::readGenericImage(uiContext.draggedFile, cfg.imageReadContext()));
+        redoLocations = !loaded;
         uiContext.imageContext.resetTexture();
       }
     }
@@ -656,7 +629,7 @@ void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
     static std::string cultureGroupStateStatus;
     if (uiContext.tabSwitchEvent(true)) {
       uiContext.imageContext.updateImage(
-          0, Arda::Gfx::displayCultureGroups(currentGenerator().ardaProvinces));
+          0, Arda::Gfx::displayCultureGroups(currentGenerator().ardaData.areaData.provinces));
       uiContext.imageContext.updateImage(1, Fwg::Gfx::Image());
     }
     auto guard = Fwg::UI::PrerequisiteChecker::require(
@@ -689,7 +662,7 @@ void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
       ImGui::Spacing();
       ImGui::SeparatorText("Selected Culture Details");
 
-      if (currentGenerator().ardaRegions.size()) {
+      if (currentGenerator().ardaData.areaData.regions.size()) {
         auto modifiableState = getSelectedRegion();
         if (modifiableState != nullptr && modifiableState->isLand()) {
           auto primaryCulture = modifiableState->getPrimaryCulture();
@@ -806,7 +779,7 @@ void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
         if (currentGenerator().loadCultures(inputImage)) {
           uiContext.imageContext.updateImage(
               0, Arda::Gfx::displayCultureGroups(
-                     currentGenerator().ardaProvinces));
+                     currentGenerator().ardaData.areaData.provinces));
           uiContext.imageContext.updateImage(1, Fwg::Gfx::Image());
           redoCulture = false;
         }
@@ -830,7 +803,7 @@ void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
         if (currentGenerator().loadCultureGroupState(cultureGroupStatePath)) {
           uiContext.imageContext.updateImage(
               0, Arda::Gfx::displayCultureGroups(
-                     currentGenerator().ardaProvinces));
+                     currentGenerator().ardaData.areaData.provinces));
           uiContext.imageContext.resetTexture();
           resetSelection = true;
           cultureGroupStateStatus = "Culture-group state loaded.";
@@ -850,7 +823,7 @@ void ArdaUI::showReligionTab(Fwg::Cfg &cfg) {
   if (Fwg::UI::Elements::BeginSubTabItem("Religion")) {
     if (uiContext.tabSwitchEvent()) {
       uiContext.imageContext.updateImage(
-          0, Arda::Gfx::displayReligions(currentGenerator().ardaProvinces));
+          0, Arda::Gfx::displayReligions(currentGenerator().ardaData.areaData.provinces));
       uiContext.imageContext.updateImage(1, Fwg::Gfx::Image());
     }
     auto guard = Fwg::UI::PrerequisiteChecker::require(
@@ -896,12 +869,18 @@ void ArdaUI::overview(Fwg::Cfg &cfg) {
     ImGui::Spacing();
 
     if (showVisualLayerToggles(visualLayerInfos)) {
-      uiContext.imageContext.updateImage(
-          0,
-          UI::renderVisualLayers(currentGenerator(), cfg.width, cfg.height,
-                                 cfg,
-                                 currentGenerator().areaGenerationContext(cfg),
-                                 visualLayerInfos));
+      if (Fwg::Gfx::isCurrentVisualizationDimensions(
+              cfg.width, cfg.height, cfg.processingArea)) {
+        uiContext.imageContext.updateImage(
+            0, UI::renderVisualLayers(
+                   currentGenerator(), cfg.width, cfg.height, cfg,
+                   currentGenerator().areaGenerationContext(cfg),
+                   visualLayerInfos));
+      } else {
+        Fwg::Utils::Logging::logLine(
+            "Skipping overview visualization: map dimensions are stale");
+        uiContext.imageContext.updateImage(0, Fwg::Gfx::Image());
+      }
     }
 
     ImGui::EndTabItem();
@@ -948,12 +927,12 @@ std::optional<ArdaUI::MapSelection> ArdaUI::consumeMapSelection() {
     return std::nullopt;
 
   const auto region = std::ranges::find_if(
-      generator.ardaRegions, [&province](const auto &candidate) {
+      generator.ardaData.areaData.regions, [&province](const auto &candidate) {
         return candidate && province->regionID >= 0 &&
                candidate->ID == province->regionID;
       });
   return MapSelection{click, province,
-                      region == generator.ardaRegions.end() ? nullptr
+                      region == generator.ardaData.areaData.regions.end() ? nullptr
                                                             : *region};
 }
 
@@ -973,7 +952,7 @@ std::shared_ptr<Arda::ArdaRegion> ArdaUI::getSelectedRegion() {
     resetSelection = true;
   }
 
-  const auto &regions = currentGenerator().ardaRegions;
+  const auto &regions = currentGenerator().ardaData.areaData.regions;
   auto selected = std::ranges::find_if(regions, [this](const auto &region) {
     return region && region->ID == selectedRegionId;
   });

@@ -100,11 +100,20 @@ Fwg::Gfx::Image renderVisualLayers(
     const Fwg::Areas::AreaGenerationContext &areaContext,
     const VisualLayerSettings &settings,
     const int selectedStrategicRegionID) {
+  if (!Fwg::Gfx::isCurrentVisualizationDimensions(
+          width, height, config.processingArea) ||
+      width != config.width || height != config.height ||
+      areaContext.width != width || areaContext.height != height ||
+      areaContext.processingArea != width * height) {
+    Fwg::Utils::Logging::logLine(
+        "Skipping layer visualization: invalid or stale map dimensions");
+    return {};
+  }
   const auto visualizationContext = config.visualizationContext();
   const auto climateContext = config.climateGenerationContext();
   const Fwg::Terrain::TerrainGenerationContext terrainContext(
-      config.width, config.height, config.baseArea, config.latLow,
-      config.latHigh);
+      config.width, config.height, config.baseArea,
+      config.latitudeSouthDegrees, config.latitudeNorthDegrees);
   std::vector<Fwg::Gfx::WeightedImage> layers;
   for (const auto &[type, info] : settings) {
     if (!info.toggled || info.composition != VisualLayerComposition::Blend) {
@@ -157,7 +166,7 @@ Fwg::Gfx::Image renderVisualLayers(
     case VisualLayerType::TEMPERATURE:
       layers.push_back(
           {Fwg::Gfx::Climate::displayTemperature(
-               generator.climateData, climateContext),
+               generator.climateData, config.climateConfig, climateContext),
            info.weight});
       break;
     case VisualLayerType::CLIMATE:
@@ -214,7 +223,7 @@ Fwg::Gfx::Image renderVisualLayers(
       break;
     case VisualLayerType::SUPERREGIONS:
       layers.push_back({Arda::Gfx::visualiseStrategicRegions(
-                            generator.superRegionMap, generator.superRegions,
+                            generator.superRegionMap, generator.ardaData.areaData.superRegions,
                             selectedStrategicRegionID),
                         info.weight});
       break;
@@ -227,10 +236,10 @@ Fwg::Gfx::Image renderVisualLayers(
       break;
     case VisualLayerType::POPULATION:
       layers.push_back(
-          {Arda::Gfx::displayPopulation(generator.ardaProvinces), info.weight});
+          {Arda::Gfx::displayPopulation(generator.ardaData.areaData.provinces), info.weight});
       break;
     case VisualLayerType::DEVELOPMENT:
-      layers.push_back({Arda::Gfx::displayDevelopment(generator.ardaProvinces),
+      layers.push_back({Arda::Gfx::displayDevelopment(generator.ardaData.areaData.provinces),
                         info.weight});
       break;
     case VisualLayerType::LOCATIONS:
@@ -249,24 +258,34 @@ Fwg::Gfx::Image renderVisualLayers(
                         info.weight});
       break;
     case VisualLayerType::COUNTRIES:
+      if ((generator.countryMap.width() != width ||
+           generator.countryMap.height() != height ||
+           generator.countryMap.size() != config.processingArea) &&
+          generator.worldMap.width() == width &&
+          generator.worldMap.height() == height &&
+          generator.worldMap.size() == config.processingArea) {
+        generator.visualiseCountries(generator.countryMap, generator.worldMap);
+      }
       layers.push_back({generator.countryMap, info.weight});
       break;
     case VisualLayerType::CULTUREGROUPS:
       layers.push_back(
-          {Arda::Gfx::displayCultureGroups(generator.ardaProvinces),
+          {Arda::Gfx::displayCultureGroups(generator.ardaData.areaData.provinces),
            info.weight});
       break;
     case VisualLayerType::CULTURES:
       layers.push_back(
-          {Arda::Gfx::displayCultures(generator.ardaProvinces), info.weight});
+          {Arda::Gfx::displayCultures(generator.ardaData.areaData.provinces), info.weight});
       break;
     case VisualLayerType::RELIGIONS:
       layers.push_back(
-          {Arda::Gfx::displayReligions(generator.ardaProvinces), info.weight});
+          {Arda::Gfx::displayReligions(generator.ardaData.areaData.provinces), info.weight});
       break;
     }
   }
   auto composedImage = Fwg::Gfx::mergeWeightedImages(width, height, layers);
+  if (!layers.empty() && composedImage.size() == 0)
+    return {};
   for (const auto &[type, info] : settings) {
     if (!info.toggled ||
         info.composition != VisualLayerComposition::Overwrite) {
@@ -275,10 +294,19 @@ Fwg::Gfx::Image renderVisualLayers(
 
     switch (type) {
     case VisualLayerType::PROVINCE_BORDERS:
-      Fwg::Gfx::applyAreaBorders(composedImage, generator.areaData.provinces);
+      if (!Fwg::Gfx::applyAreaBorders(composedImage,
+                                      generator.areaData.provinces)) {
+        Fwg::Utils::Logging::logLine(
+            "Skipping layer visualization: province borders do not match map dimensions");
+        return {};
+      }
       break;
     case VisualLayerType::REGION_BORDERS:
-      Fwg::Gfx::applyAreaBorders(composedImage, generator.ardaRegions);
+      if (!Fwg::Gfx::applyAreaBorders(composedImage, generator.ardaData.areaData.regions)) {
+        Fwg::Utils::Logging::logLine(
+            "Skipping layer visualization: region borders do not match map dimensions");
+        return {};
+      }
       break;
     default:
       break;
