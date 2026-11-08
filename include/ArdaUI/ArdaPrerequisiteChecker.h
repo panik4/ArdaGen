@@ -27,24 +27,29 @@ public:
   }
 
   static Fwg::UI::Prerequisite development(const ArdaGen &ardaGen) {
-    return {"Development Data", "Generate development data first", [&]() {
-              return !ardaGen.ardaData.areaData.provinces.empty() &&
-                     ardaGen.ardaData.areaData.provinces[0]->averageDevelopment >= 0;
-            }};
+    return {
+        "Development Data", "Generate development data first", [&]() {
+          return !ardaGen.ardaData.areaData.provinces.empty() &&
+                 ardaGen.ardaData.areaData.provinces[0]->averageDevelopment >=
+                     0;
+        }};
   }
 
   static Fwg::UI::Prerequisite population(const ArdaGen &ardaGen) {
-    return {"Population Data", "Generate population data first", [&]() {
-              return !ardaGen.ardaData.areaData.provinces.empty() &&
-                     ardaGen.ardaData.areaData.provinces[0]->populationDensity >= 0;
-            }};
+    return {
+        "Population Data", "Generate population data first", [&]() {
+          return !ardaGen.ardaData.areaData.provinces.empty() &&
+                 ardaGen.ardaData.areaData.provinces[0]->populationDensity >= 0;
+        }};
   }
 
   static Fwg::UI::Prerequisite cultures(const ArdaGen &ardaGen) {
-    return {"Culture Data", "Generate culture data first", [&]() {
-              return !ardaGen.ardaData.areaData.regions.empty() &&
-                     ardaGen.ardaData.areaData.regions[0]->getPrimaryCulture() != nullptr;
-            }};
+    return {
+        "Culture Data", "Generate culture data first", [&]() {
+          return !ardaGen.ardaData.areaData.regions.empty() &&
+                 ardaGen.ardaData.areaData.regions[0]->getPrimaryCulture() !=
+                     nullptr;
+        }};
   }
 
   static Fwg::UI::Prerequisite locations(const ArdaGen &ardaGen) {
@@ -57,8 +62,9 @@ public:
             }};
   }
   static Fwg::UI::Prerequisite strategicRegions(const ArdaGen &generator) {
-    return {"Strategic Regions", "Generate strategic regions first",
-            [&]() { return !generator.ardaData.areaData.superRegions.empty(); }};
+    return {"Strategic Regions", "Generate strategic regions first", [&]() {
+              return !generator.ardaData.areaData.superRegions.empty();
+            }};
   }
 
   static Fwg::UI::Prerequisite countries(const ArdaGen &generator) {

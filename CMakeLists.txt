@@ -4,6 +4,10 @@ cmake_minimum_required(VERSION 3.15)
 # Project name and version
 project(ArdaGenUI VERSION 1.0 LANGUAGES CXX)
 
+if (CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+    include(CTest)
+endif()
+
 # ------------------------------------------------------------
 # C++ standard
 # ------------------------------------------------------------

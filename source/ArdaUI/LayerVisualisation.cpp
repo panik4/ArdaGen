@@ -94,14 +94,14 @@ VisualLayerSettings createVisualLayerPreset(const VisualLayerPreset preset) {
   return settings;
 }
 
-Fwg::Gfx::Image renderVisualLayers(
-    ArdaGen &generator, const int width, const int height,
-    const Fwg::Cfg &config,
-    const Fwg::Areas::AreaGenerationContext &areaContext,
-    const VisualLayerSettings &settings,
-    const int selectedStrategicRegionID) {
-  if (!Fwg::Gfx::isCurrentVisualizationDimensions(
-          width, height, config.processingArea) ||
+Fwg::Gfx::Image
+renderVisualLayers(ArdaGen &generator, const int width, const int height,
+                   const Fwg::Cfg &config,
+                   const Fwg::Areas::AreaGenerationContext &areaContext,
+                   const VisualLayerSettings &settings,
+                   const int selectedStrategicRegionID) {
+  if (!Fwg::Gfx::isCurrentVisualizationDimensions(width, height,
+                                                  config.processingArea) ||
       width != config.width || height != config.height ||
       areaContext.width != width || areaContext.height != height ||
       areaContext.processingArea != width * height) {
@@ -112,8 +112,8 @@ Fwg::Gfx::Image renderVisualLayers(
   const auto visualizationContext = config.visualizationContext();
   const auto climateContext = config.climateGenerationContext();
   const Fwg::Terrain::TerrainGenerationContext terrainContext(
-      config.width, config.height, config.baseArea,
-      config.latitudeSouthDegrees, config.latitudeNorthDegrees);
+      config.width, config.height, config.baseArea, config.latitudeSouthDegrees,
+      config.latitudeNorthDegrees);
   std::vector<Fwg::Gfx::WeightedImage> layers;
   for (const auto &[type, info] : settings) {
     if (!info.toggled || info.composition != VisualLayerComposition::Blend) {
@@ -134,10 +134,9 @@ Fwg::Gfx::Image renderVisualLayers(
            info.weight});
       break;
     case VisualLayerType::TOPOGRAPHY:
-      layers.push_back(
-          {Fwg::Gfx::topographyMap(generator.terrainData.altitudes, width,
-                                   height),
-           info.weight});
+      layers.push_back({Fwg::Gfx::topographyMap(generator.terrainData.altitudes,
+                                                width, height),
+                        info.weight});
       break;
     case VisualLayerType::NORMALMAP:
       layers.push_back(
@@ -158,10 +157,9 @@ Fwg::Gfx::Image renderVisualLayers(
            info.weight});
       break;
     case VisualLayerType::HUMIDITY:
-      layers.push_back(
-          {Fwg::Gfx::Climate::displayHumidity(
-               generator.climateData, climateContext),
-           info.weight});
+      layers.push_back({Fwg::Gfx::Climate::displayHumidity(
+                            generator.climateData, climateContext),
+                        info.weight});
       break;
     case VisualLayerType::TEMPERATURE:
       layers.push_back(
@@ -170,36 +168,32 @@ Fwg::Gfx::Image renderVisualLayers(
            info.weight});
       break;
     case VisualLayerType::CLIMATE:
-      layers.push_back(
-          {Fwg::Gfx::Climate::displayClimate(
-               generator.climateData, false, config.climateConfig,
-               climateContext),
-           info.weight});
+      layers.push_back({Fwg::Gfx::Climate::displayClimate(
+                            generator.climateData, false, config.climateConfig,
+                            climateContext),
+                        info.weight});
       break;
     case VisualLayerType::TREECLIMATE:
-      layers.push_back(
-          {Fwg::Gfx::Climate::displayClimate(
-               generator.climateData, true, config.climateConfig,
-               climateContext),
-           info.weight});
+      layers.push_back({Fwg::Gfx::Climate::displayClimate(
+                            generator.climateData, true, config.climateConfig,
+                            climateContext),
+                        info.weight});
       break;
     case VisualLayerType::TREEDENSITY:
-      layers.push_back(
-          {Fwg::Gfx::Climate::displayTreeDensity(
-               generator.climateData, climateContext),
-           info.weight});
+      layers.push_back({Fwg::Gfx::Climate::displayTreeDensity(
+                            generator.climateData, climateContext),
+                        info.weight});
       break;
     case VisualLayerType::HABITABILITY:
       layers.push_back(
           {Fwg::Gfx::displayHabitability(generator.climateData.habitabilities,
-                                          climateContext),
+                                         climateContext),
            info.weight});
       break;
     case VisualLayerType::ARABLELAND:
-      layers.push_back(
-          {Fwg::Gfx::Climate::displayArableLand(
-               generator.climateData, climateContext),
-           info.weight});
+      layers.push_back({Fwg::Gfx::Climate::displayArableLand(
+                            generator.climateData, climateContext),
+                        info.weight});
       break;
     case VisualLayerType::SUPERSEGMENTS:
       layers.push_back({Fwg::Gfx::Segments::displaySuperSegments(
@@ -207,10 +201,9 @@ Fwg::Gfx::Image renderVisualLayers(
                         info.weight});
       break;
     case VisualLayerType::SEGMENTS:
-      layers.push_back(
-          {Fwg::Gfx::Segments::displaySegments(generator.areaData.segments,
-                                               areaContext),
-           info.weight});
+      layers.push_back({Fwg::Gfx::Segments::displaySegments(
+                            generator.areaData.segments, areaContext),
+                        info.weight});
       break;
     case VisualLayerType::PROVINCES:
       layers.push_back({generator.provinceMap, info.weight});
@@ -223,24 +216,26 @@ Fwg::Gfx::Image renderVisualLayers(
       break;
     case VisualLayerType::SUPERREGIONS:
       layers.push_back({Arda::Gfx::visualiseStrategicRegions(
-                            generator.superRegionMap, generator.ardaData.areaData.superRegions,
+                            generator.superRegionMap,
+                            generator.ardaData.areaData.superRegions,
                             selectedStrategicRegionID),
                         info.weight});
       break;
     case VisualLayerType::CONTINENTS:
-      layers.push_back(
-          {Fwg::Gfx::simpleContinents(generator.areaData.continents,
-                                      generator.areaData.seaBodies,
-                                      areaContext),
-           info.weight});
+      layers.push_back({Fwg::Gfx::simpleContinents(
+                            generator.areaData.continents,
+                            generator.areaData.seaBodies, areaContext),
+                        info.weight});
       break;
     case VisualLayerType::POPULATION:
       layers.push_back(
-          {Arda::Gfx::displayPopulation(generator.ardaData.areaData.provinces), info.weight});
+          {Arda::Gfx::displayPopulation(generator.ardaData.areaData.provinces),
+           info.weight});
       break;
     case VisualLayerType::DEVELOPMENT:
-      layers.push_back({Arda::Gfx::displayDevelopment(generator.ardaData.areaData.provinces),
-                        info.weight});
+      layers.push_back(
+          {Arda::Gfx::displayDevelopment(generator.ardaData.areaData.provinces),
+           info.weight});
       break;
     case VisualLayerType::LOCATIONS:
       layers.push_back({Arda::Gfx::displayLocations(generator.areaData.regions,
@@ -251,11 +246,11 @@ Fwg::Gfx::Image renderVisualLayers(
       layers.push_back({generator.worldMap, info.weight});
       break;
     case VisualLayerType::CIVILISATION_MAP:
-      layers.push_back({Fwg::Gfx::displayWorldCivilisationMap(
-                            generator.climateData, generator.provinceMap,
-                            generator.worldMap, generator.regionMap, "",
-                            visualizationContext),
-                        info.weight});
+      layers.push_back(
+          {Fwg::Gfx::displayWorldCivilisationMap(
+               generator.climateData, generator.provinceMap, generator.worldMap,
+               generator.regionMap, "", visualizationContext),
+           info.weight});
       break;
     case VisualLayerType::COUNTRIES:
       if ((generator.countryMap.width() != width ||
@@ -269,17 +264,19 @@ Fwg::Gfx::Image renderVisualLayers(
       layers.push_back({generator.countryMap, info.weight});
       break;
     case VisualLayerType::CULTUREGROUPS:
-      layers.push_back(
-          {Arda::Gfx::displayCultureGroups(generator.ardaData.areaData.provinces),
-           info.weight});
+      layers.push_back({Arda::Gfx::displayCultureGroups(
+                            generator.ardaData.areaData.provinces),
+                        info.weight});
       break;
     case VisualLayerType::CULTURES:
       layers.push_back(
-          {Arda::Gfx::displayCultures(generator.ardaData.areaData.provinces), info.weight});
+          {Arda::Gfx::displayCultures(generator.ardaData.areaData.provinces),
+           info.weight});
       break;
     case VisualLayerType::RELIGIONS:
       layers.push_back(
-          {Arda::Gfx::displayReligions(generator.ardaData.areaData.provinces), info.weight});
+          {Arda::Gfx::displayReligions(generator.ardaData.areaData.provinces),
+           info.weight});
       break;
     }
   }
@@ -296,15 +293,16 @@ Fwg::Gfx::Image renderVisualLayers(
     case VisualLayerType::PROVINCE_BORDERS:
       if (!Fwg::Gfx::applyAreaBorders(composedImage,
                                       generator.areaData.provinces)) {
-        Fwg::Utils::Logging::logLine(
-            "Skipping layer visualization: province borders do not match map dimensions");
+        Fwg::Utils::Logging::logLine("Skipping layer visualization: province "
+                                     "borders do not match map dimensions");
         return {};
       }
       break;
     case VisualLayerType::REGION_BORDERS:
-      if (!Fwg::Gfx::applyAreaBorders(composedImage, generator.ardaData.areaData.regions)) {
-        Fwg::Utils::Logging::logLine(
-            "Skipping layer visualization: region borders do not match map dimensions");
+      if (!Fwg::Gfx::applyAreaBorders(composedImage,
+                                      generator.ardaData.areaData.regions)) {
+        Fwg::Utils::Logging::logLine("Skipping layer visualization: region "
+                                     "borders do not match map dimensions");
         return {};
       }
       break;

@@ -1,0 +1,77 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 4,
+    "minor": 4,
+    "patch": 0
+  },
+  "include": [
+    "CMakePresets.json"
+  ],
+  "workflowPresets": [
+    {
+      "name": "windows-msvc-debug-build",
+      "displayName": "Configure and build ArdaGen and tests (Debug)",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "windows-msvc-debug-tests"
+        },
+        {
+          "type": "build",
+          "name": "windows-msvc-debug-tests"
+        }
+      ]
+    },
+    {
+      "name": "windows-msvc-release-build",
+      "displayName": "Configure and build ArdaGen and tests (RelWithDebInfo)",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "windows-msvc-release-tests"
+        },
+        {
+          "type": "build",
+          "name": "windows-msvc-release-tests"
+        }
+      ]
+    },
+    {
+      "name": "windows-msvc-debug-tests",
+      "displayName": "Configure, build and test ArdaGen (Debug)",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "windows-msvc-debug-tests"
+        },
+        {
+          "type": "build",
+          "name": "windows-msvc-debug-tests"
+        },
+        {
+          "type": "test",
+          "name": "windows-msvc-debug-tests"
+        }
+      ]
+    },
+    {
+      "name": "windows-msvc-release-tests",
+      "displayName": "Configure, build and test ArdaGen (RelWithDebInfo)",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "windows-msvc-release-tests"
+        },
+        {
+          "type": "build",
+          "name": "windows-msvc-release-tests"
+        },
+        {
+          "type": "test",
+          "name": "windows-msvc-release-tests"
+        }
+      ]
+    }
+  ]
+}

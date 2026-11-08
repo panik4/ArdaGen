@@ -112,13 +112,14 @@ void ArdaUI::showCivilizationTab(Fwg::Cfg &cfg) {
     {
       Fwg::UI::Elements::GridLayout grid(2, scaled(250.0f), scaled(12.0f));
 
-      auto &civilizationConfig = currentGenerator().ardaConfig.civilizationConfig;
-      grid.AddInputDouble("Development Influence", &civilizationConfig.developmentInfluence,
-                          0.0, 10.0);
-      grid.AddInputDouble("Min Development", &civilizationConfig.minimumDevelopment, 0.0,
-                          10.0);
-      grid.AddInputDouble("Max Development", &civilizationConfig.maximumDevelopment, 0.0,
-                          10.0);
+      auto &civilizationConfig =
+          currentGenerator().ardaConfig.civilizationConfig;
+      grid.AddInputDouble("Development Influence",
+                          &civilizationConfig.developmentInfluence, 0.0, 10.0);
+      grid.AddInputDouble("Min Development",
+                          &civilizationConfig.minimumDevelopment, 0.0, 10.0);
+      grid.AddInputDouble("Max Development",
+                          &civilizationConfig.maximumDevelopment, 0.0, 10.0);
       grid.AddInputDouble(
           "Urban Factor",
           &currentGenerator().ardaConfig.locationConfig.urbanFactor, 0.0, 10.0);
@@ -183,7 +184,8 @@ void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
   if (Fwg::UI::Elements::BeginSubTabItem("Development", redoDevelopment)) {
     if (uiContext.tabSwitchEvent(true)) {
       uiContext.imageContext.updateImage(
-          0, Arda::Gfx::displayDevelopment(currentGenerator().ardaData.areaData.provinces));
+          0, Arda::Gfx::displayDevelopment(
+                 currentGenerator().ardaData.areaData.provinces));
       uiContext.imageContext.updateImage(1, currentGenerator().worldMap);
     }
     auto guard = Fwg::UI::PrerequisiteChecker::require(
@@ -215,7 +217,8 @@ void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
       {
         Fwg::UI::Elements::GridLayout grid(2, scaled(250.0f), scaled(12.0f));
 
-        for (auto &continent : currentGenerator().ardaData.areaData.continents) {
+        for (auto &continent :
+             currentGenerator().ardaData.areaData.continents) {
           std::string label = "Continent " + std::to_string(continent->ID);
           grid.AddInputDouble(label.c_str(), &continent->developmentModifier,
                               0.0, 10.0);
@@ -226,7 +229,8 @@ void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
 
       if (Fwg::UI::Elements::Button("Generate with Random Modifiers", false,
                                     ImVec2(250, 0))) {
-        currentGenerator().ardaConfig.civilizationConfig.randomDevelopment = true;
+        currentGenerator().ardaConfig.civilizationConfig.randomDevelopment =
+            true;
         uiContext.asyncContext.runAsync(
             [&cfg, this]() { return currentGenerator().genDevelopment(cfg); },
             [this](Fwg::UI::TaskResult::Outcome outcome) {
@@ -241,7 +245,8 @@ void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
               "Generate with Current Modifiers", ImVec2(250, 0))) {
         uiContext.asyncContext.runAsync(
             [&cfg, this]() {
-              currentGenerator().ardaConfig.civilizationConfig.randomDevelopment = false;
+              currentGenerator()
+                  .ardaConfig.civilizationConfig.randomDevelopment = false;
               return currentGenerator().genDevelopment(cfg);
             },
             [this](Fwg::UI::TaskResult::Outcome outcome) {
@@ -262,7 +267,8 @@ void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
                            "base development modifiers.");
 
         auto continent =
-            currentGenerator().ardaData.areaData.continents[modifiableState->continentID];
+            currentGenerator()
+                .ardaData.areaData.continents[modifiableState->continentID];
 
         {
           Fwg::UI::Elements::GridLayout grid(2, scaled(250.0f), scaled(12.0f));
@@ -274,7 +280,8 @@ void ArdaUI::showDevelopmentTab(Fwg::Cfg &cfg) {
                                   &continent->developmentModifier, 0.0, 10.0)) {
             uiContext.asyncContext.runAsync(
                 [&cfg, this]() {
-                  currentGenerator().ardaConfig.civilizationConfig.randomDevelopment = false;
+                  currentGenerator()
+                      .ardaConfig.civilizationConfig.randomDevelopment = false;
                   return currentGenerator().genDevelopment(cfg);
                 },
                 [this](Fwg::UI::TaskResult::Outcome outcome) {
@@ -297,7 +304,8 @@ void ArdaUI::showPopulationTab(Fwg::Cfg &cfg) {
   if (Fwg::UI::Elements::BeginSubTabItem("Population", redoPopulation)) {
     if (uiContext.tabSwitchEvent()) {
       uiContext.imageContext.updateImage(
-          0, Arda::Gfx::displayPopulation(currentGenerator().ardaData.areaData.provinces));
+          0, Arda::Gfx::displayPopulation(
+                 currentGenerator().ardaData.areaData.provinces));
       uiContext.imageContext.updateImage(1, currentGenerator().worldMap);
     }
 
@@ -357,7 +365,8 @@ void ArdaUI::showPopulationTab(Fwg::Cfg &cfg) {
       if (uiContext.triggeredDrag) {
         uiContext.triggeredDrag = false;
         currentGenerator().loadPopulation(
-            cfg, Fwg::IO::Reader::readGenericImage(uiContext.draggedFile, cfg.imageReadContext()));
+            cfg, Fwg::IO::Reader::readGenericImage(uiContext.draggedFile,
+                                                   cfg.imageReadContext()));
         uiContext.imageContext.resetTexture();
         redoPopulation = false;
       }
@@ -412,7 +421,8 @@ void ArdaUI::showTopographyTab(Fwg::Cfg &cfg) {
       if (uiContext.triggeredDrag) {
         uiContext.triggeredDrag = false;
         const bool loaded = currentGenerator().loadNaturalFeatures(
-            cfg, Fwg::IO::Reader::readGenericImage(uiContext.draggedFile, cfg.imageReadContext()));
+            cfg, Fwg::IO::Reader::readGenericImage(uiContext.draggedFile,
+                                                   cfg.imageReadContext()));
         uiContext.imageContext.resetTexture();
         if (loaded)
           redoTopography = false;
@@ -528,12 +538,14 @@ void ArdaUI::showLocationTab(Fwg::Cfg &cfg) {
 
       ImGui::Spacing();
       ImGui::SeparatorText("Load Custom Locations");
-      ImGui::TextWrapped("An image replaces all cities, farms, ports, mines and forests. Natural topography is preserved.");
+      ImGui::TextWrapped("An image replaces all cities, farms, ports, mines "
+                         "and forests. Natural topography is preserved.");
 
       if (uiContext.triggeredDrag) {
         uiContext.triggeredDrag = false;
-        const bool loaded = currentGenerator().loadLocations(
-            Fwg::IO::Reader::readGenericImage(uiContext.draggedFile, cfg.imageReadContext()));
+        const bool loaded =
+            currentGenerator().loadLocations(Fwg::IO::Reader::readGenericImage(
+                uiContext.draggedFile, cfg.imageReadContext()));
         redoLocations = !loaded;
         uiContext.imageContext.resetTexture();
       }
@@ -629,7 +641,8 @@ void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
     static std::string cultureGroupStateStatus;
     if (uiContext.tabSwitchEvent(true)) {
       uiContext.imageContext.updateImage(
-          0, Arda::Gfx::displayCultureGroups(currentGenerator().ardaData.areaData.provinces));
+          0, Arda::Gfx::displayCultureGroups(
+                 currentGenerator().ardaData.areaData.provinces));
       uiContext.imageContext.updateImage(1, Fwg::Gfx::Image());
     }
     auto guard = Fwg::UI::PrerequisiteChecker::require(
@@ -774,8 +787,8 @@ void ArdaUI::showCultureTab(Fwg::Cfg &cfg) {
       ImGui::SeparatorText("Load Custom Cultures");
 
       if (uiContext.triggeredDrag) {
-        const auto inputImage =
-            Fwg::IO::Reader::readGenericImage(uiContext.draggedFile, cfg.imageReadContext());
+        const auto inputImage = Fwg::IO::Reader::readGenericImage(
+            uiContext.draggedFile, cfg.imageReadContext());
         if (currentGenerator().loadCultures(inputImage)) {
           uiContext.imageContext.updateImage(
               0, Arda::Gfx::displayCultureGroups(
@@ -823,7 +836,8 @@ void ArdaUI::showReligionTab(Fwg::Cfg &cfg) {
   if (Fwg::UI::Elements::BeginSubTabItem("Religion")) {
     if (uiContext.tabSwitchEvent()) {
       uiContext.imageContext.updateImage(
-          0, Arda::Gfx::displayReligions(currentGenerator().ardaData.areaData.provinces));
+          0, Arda::Gfx::displayReligions(
+                 currentGenerator().ardaData.areaData.provinces));
       uiContext.imageContext.updateImage(1, Fwg::Gfx::Image());
     }
     auto guard = Fwg::UI::PrerequisiteChecker::require(
@@ -854,11 +868,10 @@ void ArdaUI::overview(Fwg::Cfg &cfg) {
   if (Fwg::UI::Elements::BeginMainTabItem("Overview")) {
     if (uiContext.tabSwitchEvent()) {
       uiContext.imageContext.updateImage(
-          0,
-          Fwg::Gfx::displayWorldCivilisationMap(
-              currentGenerator().climateData, currentGenerator().provinceMap,
-              currentGenerator().worldMap, currentGenerator().regionMap, "",
-              cfg.visualizationContext()));
+          0, Fwg::Gfx::displayWorldCivilisationMap(
+                 currentGenerator().climateData, currentGenerator().provinceMap,
+                 currentGenerator().worldMap, currentGenerator().regionMap, "",
+                 cfg.visualizationContext()));
       uiContext.imageContext.updateImage(1, Fwg::Gfx::Image());
     }
 
@@ -869,8 +882,8 @@ void ArdaUI::overview(Fwg::Cfg &cfg) {
     ImGui::Spacing();
 
     if (showVisualLayerToggles(visualLayerInfos)) {
-      if (Fwg::Gfx::isCurrentVisualizationDimensions(
-              cfg.width, cfg.height, cfg.processingArea)) {
+      if (Fwg::Gfx::isCurrentVisualizationDimensions(cfg.width, cfg.height,
+                                                     cfg.processingArea)) {
         uiContext.imageContext.updateImage(
             0, UI::renderVisualLayers(
                    currentGenerator(), cfg.width, cfg.height, cfg,
@@ -931,9 +944,9 @@ std::optional<ArdaUI::MapSelection> ArdaUI::consumeMapSelection() {
         return candidate && province->regionID >= 0 &&
                candidate->ID == province->regionID;
       });
-  return MapSelection{click, province,
-                      region == generator.ardaData.areaData.regions.end() ? nullptr
-                                                            : *region};
+  return MapSelection{
+      click, province,
+      region == generator.ardaData.areaData.regions.end() ? nullptr : *region};
 }
 
 void ArdaUI::resetMapSelection() {
